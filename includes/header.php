@@ -12,7 +12,7 @@ $_SESSION['user_name'] = 'Nguyễn Văn Quản';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KHO & SẢN XUẤT ERP V2.4</title>
+    <title>KHO & SẢN XUẤT</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome cho Icons -->
@@ -33,16 +33,12 @@ $_SESSION['user_name'] = 'Nguyễn Văn Quản';
     <div class="flex items-center gap-3">
         <div class="bg-blue-600 text-white p-1.5 rounded text-lg"><i class="fa-solid fa-cubes"></i></div>
         <div>
-            <h1 class="font-bold text-base leading-tight">KHO & SẢN XUẤT <span class="bg-blue-500 text-xs px-1.5 py-0.5 rounded ml-1">ERP V2.4</span></h1>
+            <h1 class="font-bold text-base leading-tight">KHO & SẢN XUẤT <span class="bg-blue-500 text-xs px-1.5 py-0.5 rounded ml-1">V1.0</span></h1>
             <p class="text-[10px] text-slate-400">Hệ thống định mức vật tư BOM, quản lý kho & lệnh sản xuất</p>
         </div>
     </div>
     
-    <div class="flex items-center gap-4">
-        <button class="bg-slate-800 hover:bg-slate-700 text-emerald-400 px-3 py-1.5 rounded-md border border-slate-600 flex items-center gap-2 transition">
-            <i class="fa-solid fa-database"></i> CSDL & Code PHP
-        </button>
-        
+    <div class="flex items-center gap-4">        
         <div class="relative cursor-pointer">
             <i class="fa-regular fa-bell text-xl text-slate-300 hover:text-white"></i>
             <span class="absolute -top-1 -right-1 bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">2</span>

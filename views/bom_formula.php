@@ -11,7 +11,8 @@
             </div>
         </div>
     </div>
-    <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition flex items-center gap-2">
+    <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition flex items-center gap-2"
+    id="btn-open-add-product">
         <i class="fa-solid fa-plus"></i> Thêm Sản Phẩm & Định Mức Mới
     </button>
 </div>
@@ -88,7 +89,8 @@
                 <div class="bg-emerald-50 text-emerald-700 text-xs px-3 py-2 rounded-lg border border-emerald-200">
                     Tồn kho vật tư hiện tại có thể sản xuất tối đa: <strong class="text-base">95</strong> Cái
                 </div>
-                <button class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition flex items-center gap-2">
+                <button class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition flex items-center gap-2"
+                id="btn-open-add-material">
                     <i class="fa-solid fa-plus"></i> Thêm Vật Tư Vào BOM
                 </button>
             </div>
@@ -167,5 +169,89 @@
         
     </div>
 </div>
+
+<!-- ==========================================
+     MODAL 1: Khai Báo Thành Phẩm & Định Mức[cite: 16]
+     ========================================== -->
+<div id="modal-add-product" class="fixed inset-0 z-50 hidden bg-slate-900/50 flex items-center justify-center transition-opacity">
+    <div class="bg-white rounded-xl w-full max-w-[600px] shadow-2xl flex flex-col">
+        <!-- Header -->
+        <div class="flex justify-between items-center p-5 border-b border-slate-100">
+            <h3 class="font-bold text-slate-800 text-lg">Khai Báo Thành Phẩm & Định Mức Mới</h3>
+            <button class="close-modal text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+        </div>
+        <!-- Body -->
+        <div class="p-6 space-y-4">
+            <div class="flex gap-4">
+                <div class="flex-1">
+                    <label class="block text-[11px] font-medium text-slate-600 mb-1">Mã thành phẩm (PK: maTP)</label>
+                    <input type="text" value="TP04" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                </div>
+                <div class="flex-1">
+                    <label class="block text-[11px] font-medium text-slate-600 mb-1">Đơn vị tính (donViTinh)</label>
+                    <select class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                        <option>Cái</option>
+                        <option>Bộ</option>
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label class="block text-[11px] font-medium text-slate-600 mb-1">Tên thành phẩm (tenTP)</label>
+                <input type="text" placeholder="VD: Bàn máy tính gaming chữ K" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+            </div>
+            <div>
+                <div class="flex justify-between items-end mb-1">
+                    <label class="block text-[11px] font-medium text-slate-600">Định mức vật tư (CHITIETTHANHPHAM)</label>
+                    <button class="text-blue-600 hover:text-blue-700 text-xs font-medium">+ Thêm dòng vật tư</button>
+                </div>
+                <div class="flex gap-3">
+                    <select class="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 text-slate-700">
+                        <option>Mặt bàn gỗ sồi (120x60cm) (NVL01)</option>
+                    </select>
+                    <input type="number" value="1" class="w-20 border border-slate-300 rounded-lg px-3 py-2 text-sm text-center focus:outline-none focus:border-blue-500 text-slate-700">
+                </div>
+            </div>
+        </div>
+        <!-- Footer -->
+        <div class="p-5 border-t border-slate-100 flex justify-end items-center gap-4 bg-slate-50 rounded-b-xl">
+            <button class="close-modal text-sm font-medium text-slate-500 hover:text-slate-800 transition">Hủy Bỏ</button>
+            <button class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-medium shadow-sm transition">Lưu Thành Phẩm & Định Mức</button>
+        </div>
+    </div>
+</div>
+
+<!-- ==========================================
+     MODAL 2: Thêm Vật Tư Vào BOM[cite: 17]
+     ========================================== -->
+<div id="modal-add-material" class="fixed inset-0 z-50 hidden bg-slate-900/50 flex items-center justify-center transition-opacity">
+    <div class="bg-white rounded-xl w-full max-w-[500px] shadow-2xl flex flex-col">
+        <!-- Header -->
+        <div class="flex justify-between items-center p-5 border-b border-slate-100">
+            <h3 class="font-bold text-slate-800 text-lg">Thêm Vật Tư Vào BOM (aaa)</h3>
+            <button class="close-modal text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+        </div>
+        <!-- Body -->
+        <div class="p-6 space-y-4">
+            <div>
+                <label class="block text-[11px] font-medium text-slate-600 mb-1">Chọn nguyên vật liệu (NGUYENVATLIEU)</label>
+                <select class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 text-slate-700">
+                    <option>Mặt bàn gỗ sồi (120x60cm) (NVL01) - Tồn: 145</option>
+                    <option>Chân bàn sắt sơn tĩnh điện (NVL02) - Tồn: 380</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-[11px] font-medium text-slate-600 mb-1">Số lượng định mức cần dùng cho 1 sản phẩm</label>
+                <input type="number" value="1" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 text-slate-700">
+            </div>
+        </div>
+        <!-- Footer -->
+        <div class="p-5 border-t border-slate-100 flex justify-end items-center gap-4 bg-slate-50 rounded-b-xl">
+            <button class="close-modal text-sm font-medium text-slate-500 hover:text-slate-800 transition">Đóng</button>
+            <button class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-medium shadow-sm transition">Cập Nhật Định Mức</button>
+        </div>
+    </div>
+</div>
+
+<script src="../assets/js/bom.js"></script>
 
 <?php require_once '../includes/footer.php'; ?>

@@ -83,11 +83,6 @@ $navItemClass = static function (string $page) use ($currentPage): string {
                         <i class="fa-solid fa-cubes-stacked text-amber-500 w-5 text-center"></i> Tồn kho Vật tư & Sản phẩm
                     </a>
                 </li>
-                <li>
-                    <a href="#" class="flex items-center gap-3 px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white transition">
-                        <i class="fa-solid fa-database text-emerald-500 w-5 text-center"></i> Cấu trúc CSDL & Code PHP
-                    </a>
-                </li>
             </ul>
         </div>
     </nav>

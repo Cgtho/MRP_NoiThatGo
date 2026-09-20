@@ -11,7 +11,8 @@
             </div>
         </div>
     </div>
-    <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition flex items-center gap-2">
+    <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition flex items-center gap-2"
+    id="btn-open-add-order">
         <i class="fa-solid fa-plus"></i> Khởi Tạo Lệnh Sản Xuất Mới
     </button>
 </div>
@@ -162,5 +163,51 @@
         
     </div>
 </div>
+
+<!-- MODAL: Tạo Lệnh Sản Xuất Mới -->
+<div id="modal-add-order" class="fixed inset-0 z-50 hidden bg-slate-900/50 flex items-center justify-center transition-opacity">
+    <div class="bg-white rounded-xl w-full max-w-[500px] shadow-2xl flex flex-col">
+        <!-- Header -->
+        <div class="flex justify-between items-center p-5 border-b border-slate-100">
+            <h3 class="font-bold text-slate-800 text-lg">Tạo Lệnh Sản Xuất Mới (YEUCAU)</h3>
+            <button class="close-modal text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+        </div>
+        <!-- Body -->
+        <div class="p-6 space-y-4">
+            <div>
+                <label class="block text-[11px] font-medium text-slate-600 mb-1">Mã yêu cầu lệnh (maYC)</label>
+                <input type="text" value="YC-2026-004" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+            </div>
+            <div>
+                <label class="block text-[11px] font-medium text-slate-600 mb-1">Chọn thành phẩm cần sản xuất (THANHPHAM)</label>
+                <select class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 text-slate-700">
+                    <option>Bàn làm việc chữ U (TP01) - Đang tồn: 45 Cái</option>
+                    <option>Ghế xoay văn phòng (TP02) - Đang tồn: 30 Cái</option>
+                </select>
+            </div>
+            <div class="flex gap-4">
+                <div class="flex-1">
+                    <label class="block text-[11px] font-medium text-slate-600 mb-1">Số lượng thành phẩm cần làm</label>
+                    <input type="number" value="50" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                </div>
+                <div class="flex-1">
+                    <label class="block text-[11px] font-medium text-slate-600 mb-1">Hạn hoàn thành</label>
+                    <input type="date" value="2026-09-30" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 text-slate-700">
+                </div>
+            </div>
+            <div>
+                <label class="block text-[11px] font-medium text-slate-600 mb-1">Mục đích / Ghi chú cho nhân viên sản xuất</label>
+                <textarea rows="2" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 placeholder-slate-400" placeholder="VD: Sản xuất 50 bàn cho hợp đồng FPT Software"></textarea>
+            </div>
+        </div>
+        <!-- Footer -->
+        <div class="p-5 border-t border-slate-100 flex justify-end items-center gap-4 bg-slate-50 rounded-b-xl">
+            <button class="close-modal text-sm font-medium text-slate-500 hover:text-slate-800 transition">Hủy</button>
+            <button class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-medium shadow-sm transition">Phát Lệnh Tới Nhân Viên</button>
+        </div>
+    </div>
+</div>
+
+<script src="../assets/js/production.js"></script>
 
 <?php require_once '../includes/footer.php'; ?>

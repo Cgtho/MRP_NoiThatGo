@@ -9,6 +9,47 @@ document.addEventListener("DOMContentLoaded", () => {
     const selectedProductName = document.getElementById('selectedProductName');
     const btnCreateRequest = document.getElementById('btnCreateRequest');
 
+    // ==========================================
+    // 1. XỬ LÝ MODAL (POPUP) THÊM SẢN PHẨM & VẬT TƯ
+    // ==========================================
+    const modalAddProduct = document.getElementById('modal-add-product');
+    const modalAddMaterial = document.getElementById('modal-add-material');
+
+    // Nút mở Modal 1: Thêm Sản phẩm
+    const btnOpenProduct = document.getElementById('btn-open-add-product');
+    if(btnOpenProduct) {
+        btnOpenProduct.addEventListener('click', () => {
+            modalAddProduct.classList.remove('hidden');
+        });
+    }
+
+    // Nút mở Modal 2: Thêm Vật tư
+    const btnOpenMaterial = document.getElementById('btn-open-add-material');
+    if(btnOpenMaterial) {
+        btnOpenMaterial.addEventListener('click', () => {
+            modalAddMaterial.classList.remove('hidden');
+        });
+    }
+
+    // Xử lý tất cả các nút đóng (Dấu X, nút Hủy Bỏ, nút Đóng)
+    const closeButtons = document.querySelectorAll('.close-modal');
+    closeButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (modalAddProduct) modalAddProduct.classList.add('hidden');
+            if (modalAddMaterial) modalAddMaterial.classList.add('hidden');
+        });
+    });
+
+    // Bấm ra ngoài vùng tối (overlay) để đóng Modal
+    window.addEventListener('click', function(e) {
+        if (e.target === modalAddProduct) {
+            modalAddProduct.classList.add('hidden');
+        }
+        if (e.target === modalAddMaterial) {
+            modalAddMaterial.classList.add('hidden');
+        }
+    });
+
     // 1. Bắt sự kiện click chọn sản phẩm
     productItems.forEach(item => {
         item.addEventListener('click', async function(e) {

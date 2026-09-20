@@ -177,4 +177,53 @@
     </div>
 </div>
 
+<!-- Bảng tổng hợp sản xuất & xuất bán thành phẩm -->
+<div class="bg-white border border-slate-200 rounded-xl shadow-sm p-6 mt-6">
+    <div class="flex justify-between items-end mb-4">
+        <h4 class="font-bold text-slate-800">2. Bảng Tổng Hợp Sản Xuất &amp; Xuất Bán Thành Phẩm (THANHPHAM)</h4>
+        <span class="text-[11px] text-slate-400">Lưu kho thành phẩm</span>
+    </div>
+
+    <div class="overflow-x-auto rounded-lg border border-slate-200">
+        <table class="w-full text-left text-sm">
+            <thead class="bg-slate-50 text-slate-500 text-[10px] uppercase font-semibold">
+                <tr>
+                    <th class="px-4 py-3 border-b border-slate-200">Mã TP</th>
+                    <th class="px-4 py-3 border-b border-slate-200">Tên Thành Phẩm</th>
+                    <th class="px-4 py-3 border-b border-slate-200">Đơn vị tính</th>
+                    <th class="px-4 py-3 text-right border-b border-slate-200">Tổng xuất bán đã duyệt</th>
+                    <th class="px-4 py-3 text-right border-b border-slate-200 bg-emerald-50/60">Hiện tồn kho</th>
+                    <th class="px-4 py-3 text-center border-b border-slate-200">Tình trạng kinh doanh</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 text-xs">
+                <tr class="hover:bg-slate-50 transition">
+                    <td class="px-4 py-3 font-bold text-slate-800">TP01</td>
+                    <td class="px-4 py-3 text-slate-700">Bàn làm việc chữ U</td>
+                    <td class="px-4 py-3 text-slate-500">Cái</td>
+                    <td class="px-4 py-3 text-right text-orange-600 font-medium">0 Cái</td>
+                    <td class="px-4 py-3 text-right bg-emerald-50/40 font-bold text-emerald-700">45 Cái</td>
+                    <td class="px-4 py-3 text-center"><span class="bg-emerald-100 text-emerald-700 text-[10px] px-2 py-0.5 rounded font-medium">Sẵn sàng bán</span></td>
+                </tr>
+                <tr class="hover:bg-slate-50 transition">
+                    <td class="px-4 py-3 font-bold text-slate-800">TP02</td>
+                    <td class="px-4 py-3 text-slate-700">Ghế xoay văn phòng</td>
+                    <td class="px-4 py-3 text-slate-500">Cái</td>
+                    <td class="px-4 py-3 text-right text-orange-600 font-medium">15 Cái</td>
+                    <td class="px-4 py-3 text-right bg-emerald-50/40 font-bold text-emerald-700">30 Cái</td>
+                    <td class="px-4 py-3 text-center"><span class="bg-emerald-100 text-emerald-700 text-[10px] px-2 py-0.5 rounded font-medium">Sẵn sàng bán</span></td>
+                </tr>
+                <tr class="hover:bg-slate-50 transition">
+                    <td class="px-4 py-3 font-bold text-slate-800">TP03</td>
+                    <td class="px-4 py-3 text-slate-700">Bàn họp chân sắt</td>
+                    <td class="px-4 py-3 text-slate-500">Cái</td>
+                    <td class="px-4 py-3 text-right text-orange-600 font-medium">0 Cái</td>
+                    <td class="px-4 py-3 text-right bg-emerald-50/40 font-bold text-emerald-700">12 Cái</td>
+                    <td class="px-4 py-3 text-center"><span class="bg-emerald-100 text-emerald-700 text-[10px] px-2 py-0.5 rounded font-medium">Sẵn sàng bán</span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
 <?php require_once '../includes/footer.php'; ?>

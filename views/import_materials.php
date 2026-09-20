@@ -11,7 +11,7 @@
             </div>
         </div>
     </div>
-    <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition flex items-center gap-2">
+    <button id="btn-open-import" type="button" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition flex items-center gap-2">
         <i class="fa-solid fa-plus"></i> Tạo Phiếu Nhập Kho Mới
     </button>
 </div>
@@ -132,5 +132,57 @@
         </div>
     </div>
 </div>
+
+<!-- Modal lập phiếu nhập kho mới -->
+<div id="modal-add-import" class="fixed inset-0 z-50 hidden bg-slate-900/50 flex items-center justify-center px-4">
+    <div class="bg-white rounded-xl w-full max-w-[540px] shadow-2xl flex flex-col" role="dialog" aria-modal="true" aria-labelledby="modal-add-import-title">
+        <div class="flex justify-between items-center px-6 py-5 border-b border-slate-100">
+            <h3 id="modal-add-import-title" class="font-bold text-slate-800 text-lg">Lập Phiếu Nhập Kho Nguyên Vật Liệu (PHIEUNHAPKHO)</h3>
+            <button type="button" class="close-import-modal text-slate-400 hover:text-slate-600" aria-label="Đóng">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+
+        <form id="import-form" class="p-6 space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                    <label for="import-code" class="block text-xs font-medium text-slate-600 mb-1">Mã phiếu nhập (maPN)</label>
+                    <input id="import-code" name="maPN" type="text" readonly class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-600 bg-slate-50 focus:outline-none">
+                </div>
+                <div>
+                    <label for="import-date" class="block text-xs font-medium text-slate-600 mb-1">Ngày nhập (ngayNhap)</label>
+                    <input id="import-date" name="ngayNhap" type="text" readonly class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm text-slate-600 bg-slate-50 focus:outline-none">
+                </div>
+            </div>
+
+            <div>
+                <label for="import-note" class="block text-xs font-medium text-slate-600 mb-1">Ghi chú nguồn hàng / Nhà cung cấp</label>
+                <input id="import-note" name="ghiChu" type="text" placeholder="VD: Mua thêm từ NCC Gỗ Việt Tiến" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+            </div>
+
+            <div>
+                <div class="flex justify-between items-end mb-1">
+                    <label for="import-material" class="block text-xs font-medium text-slate-600">Danh sách vật tư nhập kho (CHITIETPHIEUNHAP)</label>
+                    <button type="button" class="text-blue-600 hover:text-blue-700 text-xs font-medium">+ Thêm mặt hàng</button>
+                </div>
+                <div class="flex gap-2">
+                    <select id="import-material" name="maNVL" class="flex-1 min-w-0 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 text-slate-700">
+                        <option value="NVL01">Mặt bàn gỗ sồi (120x60cm) (NVL01) - Hiện có: 95</option>
+                        <option value="NVL02">Chân bàn sắt sơn tĩnh điện (NVL02) - Hiện có: 380</option>
+                        <option value="NVL03">Bộ ốc vít ren thép M6 (NVL03) - Hiện có: 2,400</option>
+                    </select>
+                    <input name="soLuong" type="number" min="1" value="1" aria-label="Số lượng nhập" class="w-24 border border-slate-300 rounded-lg px-3 py-2 text-sm text-center font-semibold text-emerald-600 focus:outline-none focus:border-blue-500">
+                </div>
+            </div>
+        </form>
+
+        <div class="px-6 py-4 border-t border-slate-100 flex justify-end items-center gap-5 bg-slate-50 rounded-b-xl">
+            <button type="button" class="close-import-modal text-sm font-medium text-slate-500 hover:text-slate-800 transition">Hủy</button>
+            <button type="button" form="import-form" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-medium shadow-sm transition">Lưu &amp; Cộng Dồn Vào Kho</button>
+        </div>
+    </div>
+</div>
+
+<script src="../assets/js/import_materials.js"></script>
 
 <?php require_once '../includes/footer.php'; ?>

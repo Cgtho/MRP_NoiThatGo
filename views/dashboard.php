@@ -9,7 +9,8 @@
         <h2 class="text-2xl font-bold mb-1">Xin chào, Nguyễn Văn Quản!</h2>
         <p class="text-slate-300 text-sm w-2/3">Hôm nay bạn có phiếu xuất cần phê duyệt và lệnh sản xuất đang hoạt động. Hãy kiểm tra các mục bên dưới.</p>
     </div>
-    <button class="absolute top-6 right-6 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-medium shadow-md transition flex items-center gap-2 z-10" onclick="window.location.href='production_orders.php'">
+    <button class="absolute top-6 right-6 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg
+     font-medium shadow-md transition flex items-center gap-2 z-10" onclick="window.location.href='production_orders.php'">
         <i class="fa-solid fa-plus"></i> Tạo Lệnh Sản Xuất
     </button>
     <!-- Background Decoration -->
@@ -19,7 +20,9 @@
 <!-- 4 Thống kê -->
 <div class="grid grid-cols-4 gap-4 mb-6">
     <!-- Card 1 -->
-    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between
+    cursor-pointer transition-all duration-200 hover:shadow-md hover:border-blue-300 hover:-translate-y-1"
+    onclick="window.location.href='inventory.php'">
         <div class="flex justify-between items-start mb-2">
             <div class="text-xs font-semibold text-slate-500">NGUYÊN VẬT LIỆU</div>
             <i class="fa-solid fa-cubes text-blue-500"></i>
@@ -30,7 +33,9 @@
         </div>
     </div>
     <!-- Card 2 -->
-    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between
+    cursor-pointer transition-all duration-200 hover:shadow-md hover:border-green-300 hover:-translate-y-1"
+    onclick="window.location.href='inventory.php'">
         <div class="flex justify-between items-start mb-2">
             <div class="text-xs font-semibold text-slate-500">THÀNH PHẨM LƯU KHO</div>
             <i class="fa-solid fa-box text-emerald-500"></i>
@@ -41,7 +46,9 @@
         </div>
     </div>
     <!-- Card 3 (Nổi bật) -->
-    <div class="bg-amber-50 p-5 rounded-xl border border-amber-200 shadow-sm flex flex-col justify-between">
+    <div class="bg-amber-50 p-5 rounded-xl border border-amber-200 shadow-sm flex flex-col justify-between
+    cursor-pointer transition-all duration-200 hover:shadow-md hover:border-yellow-300 hover:-translate-y-1"
+    onclick="window.location.href='export_materials.php'">
         <div class="flex justify-between items-start mb-2">
             <div class="text-xs font-semibold text-amber-700">XUẤT NVL CHỜ DUYỆT</div>
             <i class="fa-regular fa-clock text-amber-500"></i>
@@ -52,7 +59,9 @@
         </div>
     </div>
     <!-- Card 4 -->
-    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between
+    cursor-pointer transition-all duration-200 hover:shadow-md hover:border-purple-300 hover:-translate-y-1"
+    onclick="window.location.href='production_orders.php'">
         <div class="flex justify-between items-start mb-2">
             <div class="text-xs font-semibold text-slate-500">LỆNH SẢN XUẤT</div>
             <i class="fa-regular fa-clipboard text-purple-500"></i>
@@ -124,7 +133,8 @@
                 <div class="text-sm text-slate-700 mb-1">Mục đích: Xin cấp vật tư làm 50 bàn chữ U (YC-2026-001)</div>
                 <div class="text-[11px] text-slate-400">Ngày tạo: 2026-09-16 11:20:00 &bull; Người tạo: NV02</div>
             </div>
-            <button class="bg-[#e27a13] hover:bg-[#c96a0e] text-white text-sm font-medium px-4 py-2 rounded-lg transition shrink-0 shadow-sm">
+            <button class="bg-[#e27a13] hover:bg-[#c96a0e] text-white text-sm font-medium px-4 py-2 rounded-lg transition shrink-0 shadow-sm"
+            onclick="window.location.href='export_materials.php'">
                 Duyệt ngay
             </button>
         </div>
@@ -139,7 +149,8 @@
                 <div class="text-sm text-slate-700 mb-1">Khách hàng: Tập đoàn Bất Động Sản Hưng Vượng - Đơn #9945</div>
                 <div class="text-[11px] text-slate-400">Ngày tạo: 2026-09-19 09:30:00 &bull; Người tạo: NV03</div>
             </div>
-            <button class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition shrink-0 shadow-sm">
+            <button class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition shrink-0 shadow-sm"
+            onclick="window.location.href='export_products.php'">
                 Duyệt ngay
             </button>
         </div>
@@ -151,7 +162,7 @@
             <h3 class="font-bold text-slate-800 flex items-center gap-2">
                 <i class="fa-regular fa-clipboard text-indigo-500"></i> Lệnh Sản Xuất Hiện Có (YEUCAU)
             </h3>
-            <a href="#" class="text-sm text-indigo-600 hover:underline">Xem tất cả &rarr;</a>
+            <a href="production_orders.php" class="text-sm text-indigo-600 hover:underline">Xem tất cả &rarr;</a>
         </div>
 
         <!-- Card Lệnh 1 -->
@@ -164,7 +175,8 @@
                 <div class="text-sm text-slate-700 mb-1">Sản xuất phục vụ hợp đồng văn phòng FPT Software</div>
                 <div class="text-[11px] text-slate-400">Hạn chót: 2026-09-25 &bull; Quản lý yêu cầu: NV01</div>
             </div>
-            <button class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium px-4 py-2 rounded-lg transition shrink-0 border border-slate-200">
+            <button class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium px-4 py-2 rounded-lg transition shrink-0 border border-slate-200"
+            onclick="window.location.href='production_orders.php'">
                 Kiểm tra NVL
             </button>
         </div>
@@ -179,7 +191,8 @@
                 <div class="text-sm text-slate-700 mb-1">Đơn đặt hàng showroom Tân Bình</div>
                 <div class="text-[11px] text-slate-400">Hạn chót: 2026-09-30 &bull; Quản lý yêu cầu: NV04</div>
             </div>
-            <button class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium px-4 py-2 rounded-lg transition shrink-0 border border-slate-200">
+            <button class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium px-4 py-2 rounded-lg transition shrink-0 border border-slate-200"
+            onclick="window.location.href='production_orders.php'">
                 Kiểm tra NVL
             </button>
         </div>
@@ -194,7 +207,8 @@
                 <div class="text-sm text-slate-700 mb-1">Lô ghế xoay dự trữ đợt 1</div>
                 <div class="text-[11px] text-slate-400">Hạn chót: 2026-09-12 &bull; Quản lý yêu cầu: NV01</div>
             </div>
-            <button class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium px-4 py-2 rounded-lg transition shrink-0 border border-slate-200">
+            <button class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium px-4 py-2 rounded-lg transition shrink-0 border border-slate-200"
+            onclick="window.location.href='production_orders.php'">
                 Kiểm tra NVL
             </button>
         </div>
