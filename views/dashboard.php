@@ -9,7 +9,7 @@
         <h2 class="text-2xl font-bold mb-1">Xin chào, Nguyễn Văn Quản!</h2>
         <p class="text-slate-300 text-sm w-2/3">Hôm nay bạn có phiếu xuất cần phê duyệt và lệnh sản xuất đang hoạt động. Hãy kiểm tra các mục bên dưới.</p>
     </div>
-    <button class="absolute top-6 right-6 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-medium shadow-md transition flex items-center gap-2 z-10">
+    <button class="absolute top-6 right-6 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-medium shadow-md transition flex items-center gap-2 z-10" onclick="window.location.href='production_orders.php'">
         <i class="fa-solid fa-plus"></i> Tạo Lệnh Sản Xuất
     </button>
     <!-- Background Decoration -->
@@ -98,6 +98,105 @@
             <h4 class="font-semibold text-purple-700 text-sm mb-1">NHÂN VIÊN & QUẢN LÝ</h4>
             <p class="font-medium text-slate-800 text-sm mb-2">Hoàn thành & Xuất bán TP</p>
             <p class="text-xs text-slate-500">Nhân viên bấm Hoàn thành &rarr; tăng kho THANHPHAM. Lập PHIEUXUATTP để bán, Quản lý duyệt trừ kho.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Khối Danh sách Phiếu chờ duyệt & Lệnh sản xuất -->
+<div class="grid grid-cols-2 gap-6 mb-6">
+    
+    <!-- CỘT TRÁI: Phiếu Chờ Phê Duyệt -->
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-4">
+        <div class="flex justify-between items-center mb-1">
+            <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                <i class="fa-regular fa-clock text-amber-500"></i> Phiếu Chờ Phê Duyệt (2)
+            </h3>
+            <span class="text-sm text-slate-400">Cần bạn phê duyệt</span>
+        </div>
+
+        <!-- Card 1: PXNVL -->
+        <div class="border border-amber-200 rounded-lg p-4 flex justify-between items-center bg-white shadow-sm">
+            <div>
+                <div class="flex items-center gap-2 mb-1.5">
+                    <span class="font-bold text-amber-700">PXNVL-002</span>
+                    <span class="bg-amber-100 text-amber-800 text-[11px] font-medium px-2 py-0.5 rounded">Xuất NVL làm hàng</span>
+                </div>
+                <div class="text-sm text-slate-700 mb-1">Mục đích: Xin cấp vật tư làm 50 bàn chữ U (YC-2026-001)</div>
+                <div class="text-[11px] text-slate-400">Ngày tạo: 2026-09-16 11:20:00 &bull; Người tạo: NV02</div>
+            </div>
+            <button class="bg-[#e27a13] hover:bg-[#c96a0e] text-white text-sm font-medium px-4 py-2 rounded-lg transition shrink-0 shadow-sm">
+                Duyệt ngay
+            </button>
+        </div>
+
+        <!-- Card 2: PXTP -->
+        <div class="border border-blue-200 rounded-lg p-4 flex justify-between items-center bg-white shadow-sm">
+            <div>
+                <div class="flex items-center gap-2 mb-1.5">
+                    <span class="font-bold text-blue-700">PXTP-002</span>
+                    <span class="bg-blue-100 text-blue-800 text-[11px] font-medium px-2 py-0.5 rounded">Xuất bán thành phẩm</span>
+                </div>
+                <div class="text-sm text-slate-700 mb-1">Khách hàng: Tập đoàn Bất Động Sản Hưng Vượng - Đơn #9945</div>
+                <div class="text-[11px] text-slate-400">Ngày tạo: 2026-09-19 09:30:00 &bull; Người tạo: NV03</div>
+            </div>
+            <button class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition shrink-0 shadow-sm">
+                Duyệt ngay
+            </button>
+        </div>
+    </div>
+
+    <!-- CỘT PHẢI: Lệnh Sản Xuất Hiện Có -->
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-4">
+        <div class="flex justify-between items-center mb-1">
+            <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                <i class="fa-regular fa-clipboard text-indigo-500"></i> Lệnh Sản Xuất Hiện Có (YEUCAU)
+            </h3>
+            <a href="#" class="text-sm text-indigo-600 hover:underline">Xem tất cả &rarr;</a>
+        </div>
+
+        <!-- Card Lệnh 1 -->
+        <div class="border border-slate-200 rounded-lg p-4 flex justify-between items-center bg-white shadow-sm">
+            <div>
+                <div class="flex items-center gap-2 mb-1.5">
+                    <span class="font-bold text-slate-800">YC-2026-001</span>
+                    <span class="bg-indigo-100 text-indigo-700 text-[11px] font-medium px-2 py-0.5 rounded">Đang sản xuất</span>
+                </div>
+                <div class="text-sm text-slate-700 mb-1">Sản xuất phục vụ hợp đồng văn phòng FPT Software</div>
+                <div class="text-[11px] text-slate-400">Hạn chót: 2026-09-25 &bull; Quản lý yêu cầu: NV01</div>
+            </div>
+            <button class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium px-4 py-2 rounded-lg transition shrink-0 border border-slate-200">
+                Kiểm tra NVL
+            </button>
+        </div>
+
+        <!-- Card Lệnh 2 -->
+        <div class="border border-slate-200 rounded-lg p-4 flex justify-between items-center bg-white shadow-sm">
+            <div>
+                <div class="flex items-center gap-2 mb-1.5">
+                    <span class="font-bold text-slate-800">YC-2026-002</span>
+                    <span class="bg-amber-100 text-amber-700 text-[11px] font-medium px-2 py-0.5 rounded">Chờ xử lý</span>
+                </div>
+                <div class="text-sm text-slate-700 mb-1">Đơn đặt hàng showroom Tân Bình</div>
+                <div class="text-[11px] text-slate-400">Hạn chót: 2026-09-30 &bull; Quản lý yêu cầu: NV04</div>
+            </div>
+            <button class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium px-4 py-2 rounded-lg transition shrink-0 border border-slate-200">
+                Kiểm tra NVL
+            </button>
+        </div>
+
+        <!-- Card Lệnh 3 -->
+        <div class="border border-slate-200 rounded-lg p-4 flex justify-between items-center bg-white shadow-sm">
+            <div>
+                <div class="flex items-center gap-2 mb-1.5">
+                    <span class="font-bold text-slate-800">YC-2026-003</span>
+                    <span class="bg-emerald-100 text-emerald-700 text-[11px] font-medium px-2 py-0.5 rounded">Đã hoàn thành</span>
+                </div>
+                <div class="text-sm text-slate-700 mb-1">Lô ghế xoay dự trữ đợt 1</div>
+                <div class="text-[11px] text-slate-400">Hạn chót: 2026-09-12 &bull; Quản lý yêu cầu: NV01</div>
+            </div>
+            <button class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium px-4 py-2 rounded-lg transition shrink-0 border border-slate-200">
+                Kiểm tra NVL
+            </button>
         </div>
     </div>
 </div>
