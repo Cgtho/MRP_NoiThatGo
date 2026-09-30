@@ -1,13 +1,41 @@
-<?php require_once '../includes/header.php'; ?>
+<?php
+require_once '../includes/header.php';
+require_once '../config.php';
+
+$isManager = (int) ($_SESSION['role'] ?? 1) === 0;
+$pendingTasks = 0;
+if ($isManager) {
+    $stmt = $pdo->prepare(
+        'SELECT
+            (SELECT COUNT(*) FROM PHIEUXUATNVL WHERE maQL = :maQL_NVL AND trangThai = 0)
+            +
+            (SELECT COUNT(*) FROM PHIEUXUATTP WHERE maQL = :maQL_TP AND trangThai = 0) AS totalTasks'
+    );
+    $stmt->execute([
+        'maQL_NVL' => $_SESSION['current_user'],
+        'maQL_TP' => $_SESSION['current_user'],
+    ]);
+    $pendingTasks = (int) $stmt->fetchColumn();
+} else {
+    $stmt = $pdo->prepare('SELECT COUNT(*) FROM YEUCAU WHERE maNV = :maNV');
+    $stmt->execute(['maNV' => $_SESSION['current_user']]);
+    $pendingTasks = (int) $stmt->fetchColumn();
+}
+?>
 
 <!-- Banner Xin Chào -->
 <div class="bg-[#0f172a] rounded-2xl p-6 mb-6 text-white shadow-lg relative overflow-hidden">
     <div class="relative z-10">
-        <div class="flex items-center gap-2 text-slate-400 text-xs mb-2">
-            <i class="fa-solid fa-circle-info"></i> Vai trò: Quản lý Kho (vaiTro = 0) | Mã NV: NV01
-        </div>
-        <h2 class="text-2xl font-bold mb-1">Xin chào, Nguyễn Văn Quản!</h2>
-        <p class="text-slate-300 text-sm w-2/3">Hôm nay bạn có phiếu xuất cần phê duyệt và lệnh sản xuất đang hoạt động. Hãy kiểm tra các mục bên dưới.</p>
+        <h2 class="text-2xl font-bold mb-1">Xin chào, <?= htmlspecialchars($_SESSION['user_name'], ENT_QUOTES, 'UTF-8') ?>!</h2>
+        <?php if ($pendingTasks > 0): ?>
+            <p class="text-slate-300 text-sm w-2/3">
+                <?php if ($isManager): ?>
+                    Bạn có <?= $pendingTasks ?> phiếu xuất từ nhân viên đang chờ phê duyệt.
+                <?php else: ?>
+                    Bạn có <?= $pendingTasks ?> lệnh sản xuất cần kiểm tra và thực hiện.
+                <?php endif; ?>
+            </p>
+        <?php endif; ?>
     </div>
     <button class="absolute top-6 right-6 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg
      font-medium shadow-md transition flex items-center gap-2 z-10" onclick="window.location.href='production_orders.php'">

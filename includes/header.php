@@ -7,6 +7,10 @@ if (!isset($_SESSION['current_user'], $_SESSION['user_name'], $_SESSION['role'])
     header('Location: ../index.php');
     exit;
 }
+
+$isManager = (int) $_SESSION['role'] === 0;
+$roleLabel = $isManager ? 'Quản lý kho' : 'Nhân viên kho';
+$roleIcon = $isManager ? 'fa-crown' : 'fa-user';
 ?>
 <!DOCTYPE html>
 <html lang="vi">
@@ -44,19 +48,11 @@ if (!isset($_SESSION['current_user'], $_SESSION['user_name'], $_SESSION['role'])
             <i class="fa-regular fa-bell text-xl text-slate-300 hover:text-white"></i>
             <span class="absolute -top-1 -right-1 bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">2</span>
         </div>
-
-        <div class="flex items-center gap-2 border-l border-slate-700 pl-4">
-            <i class="fa-regular fa-circle-user text-2xl text-slate-300"></i>
-            <div class="leading-tight">
-                <div class="font-semibold text-sm"><?= $_SESSION['user_name'] ?></div>
-                <div class="text-[11px] text-slate-400">Quản lý kho (vaiTro = 0)</div>
-            </div>
-        </div>
         
         <div class="flex items-center gap-2 ml-2">
             <div class="bg-slate-800 px-3 py-1.5 rounded-md border border-slate-600 flex items-center gap-2 text-amber-400">
-                <i class="fa-solid fa-crown"></i>
-                <span>QL: <?= htmlspecialchars($_SESSION['user_name'], ENT_QUOTES, 'UTF-8') ?> (<?= htmlspecialchars($_SESSION['current_user'], ENT_QUOTES, 'UTF-8') ?>)</span>
+                <i class="fa-solid <?= $roleIcon ?>"></i>
+                <span><?= htmlspecialchars($roleLabel, ENT_QUOTES, 'UTF-8') ?>: <?= htmlspecialchars($_SESSION['user_name'], ENT_QUOTES, 'UTF-8') ?></span>
             </div>
             <form id="logoutForm" action="../ajax/logout.php" method="post">
                 <button type="submit" class="bg-rose-600 hover:bg-rose-500 px-3 py-1.5 rounded-md flex items-center gap-2 text-white transition" title="Đăng xuất">

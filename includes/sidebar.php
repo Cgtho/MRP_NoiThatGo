@@ -1,4 +1,6 @@
 <?php
+$isManager = (int) ($_SESSION['role'] ?? 1) === 0;
+$roleLabel = $isManager ? 'Quản lý kho' : 'Nhân viên kho';
 $currentPage = basename($_SERVER['PHP_SELF']);
 $navItemClass = static function (string $page) use ($currentPage): string {
     return $currentPage === $page
@@ -14,7 +16,7 @@ $navItemClass = static function (string $page) use ($currentPage): string {
             <i class="fa-solid fa-shield-halved text-blue-400 text-xl"></i>
             <div class="leading-tight">
                 <div class="text-[10px] text-slate-400 uppercase">Đang thao tác với quyền:</div>
-                <div class="font-semibold text-sm text-white">Quản lý kho</div>
+                <div class="font-semibold text-sm text-white"><?= htmlspecialchars($roleLabel, ENT_QUOTES, 'UTF-8') ?></div>
             </div>
         </div>
     </div>
@@ -31,7 +33,7 @@ $navItemClass = static function (string $page) use ($currentPage): string {
         <!-- NHIỆM VỤ QUẢN LÝ KHO -->
         <div>
             <div class="flex justify-between items-center mb-2 px-3">
-                <span class="text-[11px] font-bold text-slate-500">NHIỆM VỤ QUẢN LÝ KHO</span>
+                <span class="text-[11px] font-bold text-slate-500">NHIỆM VỤ <?= $isManager ? 'QUẢN LÝ' : 'NHÂN VIÊN' ?> KHO</span>
                 <span class="text-[10px] bg-blue-900 text-blue-300 px-1.5 py-0.5 rounded">Ưu tiên</span>
             </div>
             <ul class="space-y-1">
@@ -45,32 +47,42 @@ $navItemClass = static function (string $page) use ($currentPage): string {
                         <i class="fa-regular fa-clipboard text-indigo-400 w-5 text-center"></i> Lệnh sản xuất (Yêu cầu)
                     </a>
                 </li>
-                <li>
-                    <a href="import_materials.php" class="<?= $navItemClass('import_materials.php') ?>" <?= $currentPage === 'import_materials.php' ? 'aria-current="page"' : '' ?>>
-                        <i class="fa-solid fa-box-open text-emerald-400 w-5 text-center"></i> Nhập kho NVL (Phiếu nhập)
-                    </a>
-                </li>
+                <?php if ($isManager): ?>
+                    <li>
+                        <a href="import_materials.php" class="<?= $navItemClass('import_materials.php') ?>" <?= $currentPage === 'import_materials.php' ? 'aria-current="page"' : '' ?>>
+                            <i class="fa-solid fa-box-open text-emerald-400 w-5 text-center"></i> Nhập kho NVL (Phiếu nhập)
+                        </a>
+                    </li>
+                <?php endif; ?>
                 <li>
                     <a href="export_materials.php" class="<?= $navItemClass('export_materials.php') ?>" <?= $currentPage === 'export_materials.php' ? 'aria-current="page"' : '' ?>>
                         <div class="flex items-center gap-3">
-                            <i class="fa-solid fa-dolly text-amber-400 w-5 text-center"></i> Phê duyệt xuất NVL
+                            <i class="fa-solid fa-dolly text-amber-400 w-5 text-center"></i>
+                            <?= $isManager ? 'Phê duyệt xuất NVL' : 'Tạo phiếu xuất NVL' ?>
                         </div>
-                        <span class="bg-amber-500 text-white text-[10px] px-1.5 py-0.5 rounded">1</span>
+                        <?php if ($isManager): ?>
+                            <span class="bg-amber-500 text-white text-[10px] px-1.5 py-0.5 rounded">1</span>
+                        <?php endif; ?>
                     </a>
                 </li>
                 <li>
                     <a href="export_products.php" class="<?= $navItemClass('export_products.php') ?>" <?= $currentPage === 'export_products.php' ? 'aria-current="page"' : '' ?>>
                         <div class="flex items-center gap-3">
-                            <i class="fa-solid fa-truck-fast text-emerald-500 w-5 text-center"></i> Phê duyệt xuất Thành phẩm
+                            <i class="fa-solid fa-truck-fast text-emerald-500 w-5 text-center"></i>
+                            <?= $isManager ? 'Phê duyệt xuất Thành phẩm' : 'Tạo phiếu xuất Thành phẩm' ?>
                         </div>
-                        <span class="bg-amber-500 text-white text-[10px] px-1.5 py-0.5 rounded">1</span>
+                        <?php if ($isManager): ?>
+                            <span class="bg-amber-500 text-white text-[10px] px-1.5 py-0.5 rounded">1</span>
+                        <?php endif; ?>
                     </a>
                 </li>
-                <li>
-                    <a href="reports.php" class="<?= $navItemClass('reports.php') ?>" <?= $currentPage === 'reports.php' ? 'aria-current="page"' : '' ?>>
-                        <i class="fa-solid fa-chart-simple text-purple-400 w-5 text-center"></i> Báo cáo thống kê Kho
-                    </a>
-                </li>
+                <?php if ($isManager): ?>
+                    <li>
+                        <a href="reports.php" class="<?= $navItemClass('reports.php') ?>" <?= $currentPage === 'reports.php' ? 'aria-current="page"' : '' ?>>
+                            <i class="fa-solid fa-chart-simple text-purple-400 w-5 text-center"></i> Báo cáo thống kê Kho
+                        </a>
+                    </li>
+                <?php endif; ?>
             </ul>
         </div>
 
@@ -89,4 +101,4 @@ $navItemClass = static function (string $page) use ($currentPage): string {
 </aside>
 
 <!-- MAIN CONTENT AREA -->
-<main class="flex-1 overflow-y-auto bg-slate-50 p-6 scrollbar-custom">
+<main class="flex-1 <?= $currentPage === 'inventory.php' ? 'flex flex-col overflow-hidden' : 'overflow-y-auto' ?> bg-slate-50 p-6 scrollbar-custom">
