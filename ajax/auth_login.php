@@ -1,0 +1,51 @@
+<?php
+session_start();
+header('Content-Type: application/json; charset=utf-8');
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    echo json_encode(['success' => false, 'message' => 'Phương thức yêu cầu không hợp lệ.']);
+    exit;
+}
+
+require_once __DIR__ . '/../config.php';
+
+$employeeId = strtoupper(trim((string) ($_POST['employeeId'] ?? '')));
+$password = (string) ($_POST['password'] ?? '');
+
+if ($employeeId === '' || $password === '') {
+    http_response_code(422);
+    echo json_encode(['success' => false, 'message' => 'Vui lòng nhập đầy đủ mã nhân viên và mật khẩu.']);
+    exit;
+}
+
+try {
+    $stmt = $pdo->prepare(
+        'SELECT maNV, hoTen, vaiTro, matKhau
+         FROM NHANVIEN
+         WHERE maNV = :maNV
+         LIMIT 1'
+    );
+    $stmt->execute(['maNV' => $employeeId]);
+    $employee = $stmt->fetch();
+
+    if (!$employee || !password_verify($password, $employee['matKhau'])) {
+        http_response_code(401);
+        echo json_encode(['success' => false, 'message' => 'Mã nhân viên hoặc mật khẩu không đúng.']);
+        exit;
+    }
+
+    session_regenerate_id(true);
+    $_SESSION['current_user'] = $employee['maNV'];
+    $_SESSION['user_name'] = $employee['hoTen'];
+    $_SESSION['role'] = (int) $employee['vaiTro'];
+
+    echo json_encode([
+        'success' => true,
+        'message' => 'Đăng nhập thành công.',
+        'redirect' => '../views/dashboard.php',
+    ]);
+} catch (PDOException $e) {
+    http_response_code(500);
+    echo json_encode(['success' => false, 'message' => 'Không thể xác thực lúc này. Vui lòng thử lại sau.']);
+}

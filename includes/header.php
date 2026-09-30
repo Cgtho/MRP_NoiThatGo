@@ -2,10 +2,11 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-// Giả lập user đang đăng nhập
-$_SESSION['current_user'] = 'NV01'; 
-$_SESSION['role'] = 0; // 0: Quản lý
-$_SESSION['user_name'] = 'Nguyễn Văn Quản';
+
+if (!isset($_SESSION['current_user'], $_SESSION['user_name'], $_SESSION['role'])) {
+    header('Location: ../index.php');
+    exit;
+}
 ?>
 <!DOCTYPE html>
 <html lang="vi">
