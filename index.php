@@ -2,7 +2,7 @@
 session_start();
 
 if (isset($_SESSION['current_user'])) {
-    header('Location: views/dashboard.php');
+    header('Location: ./views/dashboard.php');
     exit;
 }
 ?>
@@ -91,9 +91,8 @@ if (isset($_SESSION['current_user'])) {
                     </div>
 
                     <div>
-                        <div class="mb-2 flex items-center justify-between">
+                        <div class="mb-2">
                             <label for="password" class="block text-sm font-semibold text-[#263940]">Mật khẩu</label>
-                            <a href="#" class="text-xs font-semibold text-[#c66a3d] transition hover:text-[#a9522b]">Quên mật khẩu?</a>
                         </div>
                         <div class="field flex items-center gap-3 rounded-xl border border-[#d9d7ce] bg-white px-4 transition-all">
                             <i class="fa-solid fa-lock text-[#879397]"></i>
@@ -104,8 +103,8 @@ if (isset($_SESSION['current_user'])) {
                     </div>
 
                     <label class="flex cursor-pointer items-center gap-2.5 text-sm text-[#607075]">
-                        <input type="checkbox" class="h-4 w-4 rounded border-[#c7c9c2] accent-[#c66a3d]">
-                        Ghi nhớ tài khoản trên thiết bị này
+                        <input id="rememberAccount" name="rememberAccount" type="checkbox" class="h-4 w-4 rounded border-[#c7c9c2] accent-[#c66a3d]">
+                        Ghi nhớ đăng nhập trên thiết bị này
                     </label>
 
                     <button type="submit" class="group flex h-13 w-full items-center justify-center gap-3 rounded-xl bg-[#19343a] px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-[#19343a]/15 transition hover:-translate-y-0.5 hover:bg-[#24474e] focus:outline-none focus:ring-4 focus:ring-[#19343a]/15">

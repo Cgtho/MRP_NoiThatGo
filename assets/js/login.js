@@ -7,6 +7,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const loginMessage = document.getElementById('loginMessage');
     const submitButton = form.querySelector('button[type="submit"]');
     const togglePassword = document.getElementById('togglePassword');
+    const rememberAccount = document.getElementById('rememberAccount');
+    const rememberedEmployeeId = localStorage.getItem('mrp_employee_id');
+
+    if (rememberedEmployeeId) {
+        employeeId.value = rememberedEmployeeId;
+        rememberAccount.checked = true;
+    }
+
+    rememberAccount.addEventListener('change', () => {
+        if (!rememberAccount.checked) {
+            localStorage.removeItem('mrp_employee_id');
+        }
+    });
 
     const showMessage = (message) => {
         loginMessage.textContent = message;
@@ -22,6 +35,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
+
+        if (!rememberAccount.checked) {
+            localStorage.removeItem('mrp_employee_id');
+        }
+
         const validEmployee = employeeId.value.trim() !== '';
         const validPassword = password.value !== '';
 
@@ -48,6 +66,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok || !result.success) {
                 showMessage(result.message || 'Đăng nhập không thành công.');
                 return;
+            }
+
+            if (rememberAccount.checked) {
+                localStorage.setItem('mrp_employee_id', employeeId.value.trim().toUpperCase());
+            } else {
+                localStorage.removeItem('mrp_employee_id');
             }
 
             window.location.href = result.redirect;

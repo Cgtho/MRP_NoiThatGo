@@ -53,9 +53,18 @@ if (!isset($_SESSION['current_user'], $_SESSION['user_name'], $_SESSION['role'])
             </div>
         </div>
         
-        <button class="bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-md border border-slate-600 flex items-center gap-2 text-amber-400 transition ml-2">
-            <i class="fa-solid fa-crown"></i> QL: <?= $_SESSION['user_name'] ?> (<?= $_SESSION['current_user'] ?>) <i class="fa-solid fa-chevron-down text-xs ml-1"></i>
-        </button>
+        <div class="flex items-center gap-2 ml-2">
+            <div class="bg-slate-800 px-3 py-1.5 rounded-md border border-slate-600 flex items-center gap-2 text-amber-400">
+                <i class="fa-solid fa-crown"></i>
+                <span>QL: <?= htmlspecialchars($_SESSION['user_name'], ENT_QUOTES, 'UTF-8') ?> (<?= htmlspecialchars($_SESSION['current_user'], ENT_QUOTES, 'UTF-8') ?>)</span>
+            </div>
+            <form id="logoutForm" action="../ajax/logout.php" method="post">
+                <button type="submit" class="bg-rose-600 hover:bg-rose-500 px-3 py-1.5 rounded-md flex items-center gap-2 text-white transition" title="Đăng xuất">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span class="hidden xl:inline">Đăng xuất</span>
+                </button>
+            </form>
+        </div>
     </div>
 </header>
 

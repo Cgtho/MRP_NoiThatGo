@@ -1,5 +1,4 @@
 <?php
-session_start();
 header('Content-Type: application/json; charset=utf-8');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -7,6 +6,22 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode(['success' => false, 'message' => 'Phương thức yêu cầu không hợp lệ.']);
     exit;
 }
+
+$rememberLogin = isset($_POST['rememberAccount']) && $_POST['rememberAccount'] === 'on';
+$sessionLifetime = $rememberLogin ? 60 * 60 * 24 * 30 : 0;
+
+if ($rememberLogin) {
+    ini_set('session.gc_maxlifetime', (string) $sessionLifetime);
+}
+
+session_set_cookie_params([
+    'lifetime' => $sessionLifetime,
+    'path' => '/',
+    'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+    'httponly' => true,
+    'samesite' => 'Lax',
+]);
+session_start();
 
 require_once __DIR__ . '/../config.php';
 
@@ -43,7 +58,7 @@ try {
     echo json_encode([
         'success' => true,
         'message' => 'Đăng nhập thành công.',
-        'redirect' => '../views/dashboard.php',
+        'redirect' => './views/dashboard.php',
     ]);
 } catch (PDOException $e) {
     http_response_code(500);

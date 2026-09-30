@@ -1,4 +1,11 @@
 document.addEventListener("DOMContentLoaded", () => {
+    const logoutForm = document.getElementById('logoutForm');
+    if (logoutForm) {
+        logoutForm.addEventListener('submit', () => {
+            localStorage.removeItem('mrp_employee_id');
+        });
+    }
+
     // 1. Logic chuyển đổi tài khoản (Demo nhanh bằng cách gọi ajax set session)
     const roleButtons = document.querySelectorAll('.switch-role');
     roleButtons.forEach(btn => {

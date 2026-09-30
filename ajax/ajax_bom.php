@@ -1,4 +1,13 @@
 <?php
+session_start();
+
+if (!isset($_SESSION['current_user'], $_SESSION['user_name'], $_SESSION['role'])) {
+    http_response_code(401);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['status' => 'error', 'message' => 'Bạn cần đăng nhập để tiếp tục.']);
+    exit;
+}
+
 require_once __DIR__ . '/../config.php';
 
 header('Content-Type: application/json');
