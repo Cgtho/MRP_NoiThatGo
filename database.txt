@@ -1,0 +1,623 @@
+-- ==========================================================
+-- HỆ THỐNG QUẢN LÝ KHO & SẢN XUẤT ĐỒ GỖ NỘI THẤT
+-- PHP + MySQL / MariaDB
+-- ==========================================================
+
+CREATE DATABASE IF NOT EXISTS quanlykho_sanxuat
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
+
+USE quanlykho_sanxuat;
+
+
+-- ==========================================================
+-- 1. BẢNG DONVITINH
+-- ==========================================================
+
+CREATE TABLE IF NOT EXISTS DONVITINH (
+    maDVT INT AUTO_INCREMENT PRIMARY KEY,
+    tenDVT VARCHAR(10) NOT NULL
+) ENGINE=InnoDB;
+
+
+-- ==========================================================
+-- 2. BẢNG NGUYENVATLIEU
+-- ==========================================================
+
+CREATE TABLE IF NOT EXISTS NGUYENVATLIEU (
+    maNVL VARCHAR(10) PRIMARY KEY,
+    tenNVL VARCHAR(50) NOT NULL,
+    maDVT INT NOT NULL,
+    soLuong INT NOT NULL DEFAULT 0,
+
+    CONSTRAINT fk_nvl_dvt
+        FOREIGN KEY (maDVT)
+        REFERENCES DONVITINH(maDVT)
+        ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+
+-- ==========================================================
+-- 3. BẢNG NHANVIEN
+-- vaiTro:
+-- 0 = Quản lý kho
+-- 1 = Nhân viên kho
+-- ==========================================================
+
+CREATE TABLE IF NOT EXISTS NHANVIEN (
+    maNV VARCHAR(10) PRIMARY KEY,
+    hoTen VARCHAR(50) NOT NULL,
+    vaiTro BOOLEAN NOT NULL DEFAULT 1,
+    matKhau VARCHAR(255) NOT NULL,
+    sdt VARCHAR(12) NOT NULL,
+    diaChi VARCHAR(50) NOT NULL
+) ENGINE=InnoDB;
+
+
+-- ==========================================================
+-- 4. BẢNG THANHPHAM
+-- ==========================================================
+
+CREATE TABLE IF NOT EXISTS THANHPHAM (
+    maTP VARCHAR(20) PRIMARY KEY,
+    tenTP VARCHAR(50) NOT NULL,
+    donViTinh VARCHAR(20) NOT NULL,
+    soLuong INT NOT NULL DEFAULT 0
+) ENGINE=InnoDB;
+
+
+-- ==========================================================
+-- 5. BẢNG CHITIETTHANHPHAM
+-- Định mức nguyên vật liệu cấu thành thành phẩm
+-- ==========================================================
+
+CREATE TABLE IF NOT EXISTS CHITIETTHANHPHAM (
+    maTP VARCHAR(20) NOT NULL,
+    maNVL VARCHAR(10) NOT NULL,
+    soLuong INT NOT NULL,
+
+    PRIMARY KEY (maTP, maNVL),
+
+    CONSTRAINT fk_cttp_tp
+        FOREIGN KEY (maTP)
+        REFERENCES THANHPHAM(maTP)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_cttp_nvl
+        FOREIGN KEY (maNVL)
+        REFERENCES NGUYENVATLIEU(maNVL)
+        ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+
+-- ==========================================================
+-- 6. BẢNG PHIEUNHAPKHO
+-- ==========================================================
+
+CREATE TABLE IF NOT EXISTS PHIEUNHAPKHO (
+    maPN VARCHAR(20) PRIMARY KEY,
+    ngayNhap DATETIME NOT NULL,
+    maNV VARCHAR(10) NOT NULL,
+
+    CONSTRAINT fk_pn_nv
+        FOREIGN KEY (maNV)
+        REFERENCES NHANVIEN(maNV)
+        ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+
+-- ==========================================================
+-- 7. BẢNG CHITIETPHIEUNHAP
+-- ==========================================================
+
+CREATE TABLE IF NOT EXISTS CHITIETPHIEUNHAP (
+    maPN VARCHAR(20) NOT NULL,
+    maNVL VARCHAR(10) NOT NULL,
+    soLuong INT NOT NULL,
+
+    PRIMARY KEY (maPN, maNVL),
+
+    CONSTRAINT fk_ctpn_pn
+        FOREIGN KEY (maPN)
+        REFERENCES PHIEUNHAPKHO(maPN)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_ctpn_nvl
+        FOREIGN KEY (maNVL)
+        REFERENCES NGUYENVATLIEU(maNVL)
+        ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+
+-- ==========================================================
+-- 8. BẢNG PHIEUXUATNVL
+-- loaiPhieu = 0: Phiếu xuất nguyên vật liệu
+-- ==========================================================
+
+CREATE TABLE IF NOT EXISTS PHIEUXUATNVL (
+    maPX VARCHAR(20) PRIMARY KEY,
+    ngayXuat DATETIME NOT NULL,
+    trangThai BOOLEAN NOT NULL DEFAULT 0,
+    maNV VARCHAR(10) NOT NULL,
+    maQL VARCHAR(10) NOT NULL,
+    loaiPhieu BOOLEAN NOT NULL DEFAULT 0,
+
+    CONSTRAINT fk_pxnvl_nv
+        FOREIGN KEY (maNV)
+        REFERENCES NHANVIEN(maNV)
+        ON UPDATE CASCADE,
+
+    CONSTRAINT fk_pxnvl_ql
+        FOREIGN KEY (maQL)
+        REFERENCES NHANVIEN(maNV)
+        ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+
+-- ==========================================================
+-- 9. BẢNG CHITIETPHIEUXUATNVL
+-- ==========================================================
+
+CREATE TABLE IF NOT EXISTS CHITIETPHIEUXUATNVL (
+    maPX VARCHAR(20) NOT NULL,
+    maNVL VARCHAR(10) NOT NULL,
+    soLuong INT NOT NULL,
+
+    PRIMARY KEY (maPX, maNVL),
+
+    CONSTRAINT fk_ctpxnvl_px
+        FOREIGN KEY (maPX)
+        REFERENCES PHIEUXUATNVL(maPX)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_ctpxnvl_nvl
+        FOREIGN KEY (maNVL)
+        REFERENCES NGUYENVATLIEU(maNVL)
+        ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+
+-- ==========================================================
+-- 10. BẢNG PHIEUXUATTP
+-- loaiPhieu = 1: Phiếu xuất thành phẩm
+-- ==========================================================
+
+CREATE TABLE IF NOT EXISTS PHIEUXUATTP (
+    maPX VARCHAR(20) PRIMARY KEY,
+    ngayXuat DATETIME NOT NULL,
+    trangThai BOOLEAN NOT NULL DEFAULT 0,
+    maNV VARCHAR(10) NOT NULL,
+    maQL VARCHAR(10) NOT NULL,
+    loaiPhieu BOOLEAN NOT NULL DEFAULT 1,
+
+    CONSTRAINT fk_pxtp_nv
+        FOREIGN KEY (maNV)
+        REFERENCES NHANVIEN(maNV)
+        ON UPDATE CASCADE,
+
+    CONSTRAINT fk_pxtp_ql
+        FOREIGN KEY (maQL)
+        REFERENCES NHANVIEN(maNV)
+        ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+
+-- ==========================================================
+-- 11. BẢNG CHITIETPHIEUXUATTP
+-- ==========================================================
+
+CREATE TABLE IF NOT EXISTS CHITIETPHIEUXUATTP (
+    maPX VARCHAR(20) NOT NULL,
+    maTP VARCHAR(20) NOT NULL,
+    soLuong INT NOT NULL,
+
+    PRIMARY KEY (maPX, maTP),
+
+    CONSTRAINT fk_ctpxtp_px
+        FOREIGN KEY (maPX)
+        REFERENCES PHIEUXUATTP(maPX)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_ctpxtp_tp
+        FOREIGN KEY (maTP)
+        REFERENCES THANHPHAM(maTP)
+        ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+
+-- ==========================================================
+-- 12. BẢNG YEUCAU
+-- Lệnh sản xuất từ quản lý
+-- ==========================================================
+
+CREATE TABLE IF NOT EXISTS YEUCAU (
+    maYC VARCHAR(20) PRIMARY KEY,
+    ngayYC DATETIME NOT NULL,
+    maNV VARCHAR(10) NOT NULL,
+
+    CONSTRAINT fk_yc_nv
+        FOREIGN KEY (maNV)
+        REFERENCES NHANVIEN(maNV)
+        ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+
+-- ==========================================================
+-- 13. BẢNG CHITIETYEUCAU
+-- ==========================================================
+
+CREATE TABLE IF NOT EXISTS CHITIETYEUCAU (
+    maYC VARCHAR(20) NOT NULL,
+    maTP VARCHAR(20) NOT NULL,
+    soLuong INT NOT NULL,
+
+    PRIMARY KEY (maYC, maTP),
+
+    CONSTRAINT fk_ctyc_yc
+        FOREIGN KEY (maYC)
+        REFERENCES YEUCAU(maYC)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_ctyc_tp
+        FOREIGN KEY (maTP)
+        REFERENCES THANHPHAM(maTP)
+        ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+
+
+-- ==========================================================
+-- ==================== DỮ LIỆU MẪU =========================
+-- ==========================================================
+
+
+-- ==========================================================
+-- 14. ĐƠN VỊ TÍNH
+-- ==========================================================
+
+INSERT INTO DONVITINH (maDVT, tenDVT) VALUES
+(1, 'Kg'),
+(2, 'Lít'),
+(3, 'Cái'),
+(4, 'Mét'),
+(5, 'Tấm'),
+(6, 'Cuộn');
+
+
+-- ==========================================================
+-- 15. NHÂN VIÊN
+-- 2 nhân viên kho
+-- 2 quản lý
+-- ==========================================================
+
+INSERT INTO NHANVIEN
+(maNV, hoTen, vaiTro,matKhau, sdt, diaChi) VALUES
+
+('NV001', 'Nguyễn Văn An', 1, '$2y$10$pSJ5.rDmJcfqlKGaFoLeSeYIPZ2ubUAIycCB1PhfIIWYZScctuuy6',
+ '0901000001', 'Quận 1, TP.HCM'),
+
+('NV002', 'Trần Văn Bình', 1, '$2y$10$pSJ5.rDmJcfqlKGaFoLeSeYIPZ2ubUAIycCB1PhfIIWYZScctuuy6',
+ '0901000002', 'Quận 3, TP.HCM'),
+
+('QL001', 'Lê Minh Hoàng', 0, '$2y$10$pSJ5.rDmJcfqlKGaFoLeSeYIPZ2ubUAIycCB1PhfIIWYZScctuuy6',
+ '0902000001', 'Quận 5, TP.HCM'),
+
+('QL002', 'Phạm Quốc Huy', 0, '$2y$10$pSJ5.rDmJcfqlKGaFoLeSeYIPZ2ubUAIycCB1PhfIIWYZScctuuy6',
+ '0902000002', 'Quận 10, TP.HCM');
+
+
+-- ==========================================================
+-- 16. 24 NGUYÊN VẬT LIỆU
+-- ==========================================================
+
+INSERT INTO NGUYENVATLIEU
+(maNVL, tenNVL, maDVT, soLuong) VALUES
+
+('NVL001', 'Gỗ MDF 18mm',        5, 500),
+('NVL002', 'Gỗ MDF 9mm',         5, 300),
+('NVL003', 'Gỗ cao su',          5, 400),
+('NVL004', 'Gỗ thông',           5, 350),
+('NVL005', 'Gỗ sồi',             5, 250),
+('NVL006', 'Ván ép',             5, 300),
+('NVL007', 'Veneer gỗ sồi',      4, 200),
+('NVL008', 'Laminate',           5, 250),
+
+('NVL009', 'Sơn PU trắng',       2, 150),
+('NVL010', 'Sơn PU nâu',         2, 180),
+('NVL011', 'Sơn PU đen',         2, 120),
+('NVL012', 'Sơn PU trong',       2, 100),
+
+('NVL013', 'Keo dán gỗ',         2, 120),
+('NVL014', 'Keo AB',             2, 80),
+('NVL015', 'Vít gỗ 4x40',        3, 3000),
+('NVL016', 'Vít gỗ 5x50',        3, 2500),
+
+('NVL017', 'Bản lề tủ',          3, 800),
+('NVL018', 'Ray trượt ngăn kéo', 3, 600),
+('NVL019', 'Tay nắm tủ',         3, 700),
+('NVL020', 'Chân bàn',           3, 400),
+
+('NVL021', 'Chân ghế',           3, 500),
+('NVL022', 'Đệm mút',            5, 300),
+('NVL023', 'Vải bọc ghế',        4, 400),
+('NVL024', 'Kính cường lực',     5, 200);
+
+
+-- ==========================================================
+-- 17. 10 THÀNH PHẨM ĐỒ GỖ NỘI THẤT
+-- ==========================================================
+
+INSERT INTO THANHPHAM
+(maTP, tenTP, donViTinh, soLuong) VALUES
+
+('TP001', 'Bàn làm việc gỗ',    'Cái', 30),
+('TP002', 'Bàn ăn gỗ',          'Cái', 25),
+('TP003', 'Ghế ăn gỗ',          'Cái', 40),
+('TP004', 'Ghế văn phòng gỗ',   'Cái', 25),
+('TP005', 'Tủ quần áo gỗ',      'Cái', 15),
+('TP006', 'Tủ hồ sơ gỗ',        'Cái', 20),
+('TP007', 'Kệ sách gỗ',         'Cái', 25),
+('TP008', 'Kệ tivi gỗ',         'Cái', 20),
+('TP009', 'Giường ngủ gỗ',      'Cái', 15),
+('TP010', 'Bàn trang điểm gỗ',  'Cái', 15);
+
+
+-- ==========================================================
+-- 18. ĐỊNH MỨC NGUYÊN VẬT LIỆU
+-- Mỗi thành phẩm có 4 loại NVL
+-- ==========================================================
+
+-- Bàn làm việc
+INSERT INTO CHITIETTHANHPHAM
+(maTP, maNVL, soLuong) VALUES
+('TP001', 'NVL001', 2),
+('TP001', 'NVL003', 1),
+('TP001', 'NVL015', 12),
+('TP001', 'NVL020', 4);
+
+-- Bàn ăn
+INSERT INTO CHITIETTHANHPHAM
+(maTP, maNVL, soLuong) VALUES
+('TP002', 'NVL003', 3),
+('TP002', 'NVL005', 1),
+('TP002', 'NVL015', 16),
+('TP002', 'NVL010', 1);
+
+-- Ghế ăn
+INSERT INTO CHITIETTHANHPHAM
+(maTP, maNVL, soLuong) VALUES
+('TP003', 'NVL003', 1),
+('TP003', 'NVL021', 4),
+('TP003', 'NVL015', 8),
+('TP003', 'NVL010', 1);
+
+-- Ghế văn phòng
+INSERT INTO CHITIETTHANHPHAM
+(maTP, maNVL, soLuong) VALUES
+('TP004', 'NVL003', 1),
+('TP004', 'NVL022', 2),
+('TP004', 'NVL023', 2),
+('TP004', 'NVL015', 10);
+
+-- Tủ quần áo
+INSERT INTO CHITIETTHANHPHAM
+(maTP, maNVL, soLuong) VALUES
+('TP005', 'NVL001', 6),
+('TP005', 'NVL002', 2),
+('TP005', 'NVL017', 6),
+('TP005', 'NVL019', 4);
+
+-- Tủ hồ sơ
+INSERT INTO CHITIETTHANHPHAM
+(maTP, maNVL, soLuong) VALUES
+('TP006', 'NVL001', 5),
+('TP006', 'NVL002', 2),
+('TP006', 'NVL017', 4),
+('TP006', 'NVL018', 3);
+
+-- Kệ sách
+INSERT INTO CHITIETTHANHPHAM
+(maTP, maNVL, soLuong) VALUES
+('TP007', 'NVL001', 3),
+('TP007', 'NVL007', 2),
+('TP007', 'NVL013', 1),
+('TP007', 'NVL015', 12);
+
+-- Kệ tivi
+INSERT INTO CHITIETTHANHPHAM
+(maTP, maNVL, soLuong) VALUES
+('TP008', 'NVL001', 4),
+('TP008', 'NVL008', 1),
+('TP008', 'NVL015', 16),
+('TP008', 'NVL012', 1);
+
+-- Giường ngủ
+INSERT INTO CHITIETTHANHPHAM
+(maTP, maNVL, soLuong) VALUES
+('TP009', 'NVL004', 8),
+('TP009', 'NVL006', 2),
+('TP009', 'NVL015', 24),
+('TP009', 'NVL010', 2);
+
+-- Bàn trang điểm
+INSERT INTO CHITIETTHANHPHAM
+(maTP, maNVL, soLuong) VALUES
+('TP010', 'NVL001', 3),
+('TP010', 'NVL008', 1),
+('TP010', 'NVL018', 2),
+('TP010', 'NVL019', 2);
+
+
+-- ==========================================================
+-- 19. PHIẾU NHẬP KHO
+-- ==========================================================
+
+INSERT INTO PHIEUNHAPKHO
+(maPN, ngayNhap, maNV) VALUES
+
+('PN001', '2026-09-01 08:00:00', 'NV001'),
+('PN002', '2026-09-03 09:00:00', 'NV002'),
+('PN003', '2026-09-08 08:30:00', 'NV001'),
+('PN004', '2026-09-15 10:00:00', 'NV002');
+
+
+-- ==========================================================
+-- 20. CHI TIẾT PHIẾU NHẬP
+-- ==========================================================
+
+INSERT INTO CHITIETPHIEUNHAP
+(maPN, maNVL, soLuong) VALUES
+
+('PN001', 'NVL001', 200),
+('PN001', 'NVL002', 150),
+('PN001', 'NVL003', 200),
+('PN001', 'NVL004', 150),
+('PN001', 'NVL005', 100),
+('PN001', 'NVL006', 150),
+
+('PN002', 'NVL007', 100),
+('PN002', 'NVL008', 120),
+('PN002', 'NVL009', 80),
+('PN002', 'NVL010', 100),
+('PN002', 'NVL011', 80),
+('PN002', 'NVL012', 70),
+
+('PN003', 'NVL013', 80),
+('PN003', 'NVL014', 50),
+('PN003', 'NVL015', 1000),
+('PN003', 'NVL016', 1000),
+('PN003', 'NVL017', 300),
+('PN003', 'NVL018', 250),
+
+('PN004', 'NVL019', 300),
+('PN004', 'NVL020', 200),
+('PN004', 'NVL021', 200),
+('PN004', 'NVL022', 150),
+('PN004', 'NVL023', 200),
+('PN004', 'NVL024', 100);
+
+
+-- ==========================================================
+-- 21. PHIẾU XUẤT NGUYÊN VẬT LIỆU
+-- ==========================================================
+
+INSERT INTO PHIEUXUATNVL
+(maPX, ngayXuat, trangThai, maNV, maQL, loaiPhieu) VALUES
+
+('PXN001', '2026-09-10 08:00:00', 1,
+ 'NV001', 'QL001', 0),
+
+('PXN002', '2026-09-12 09:00:00', 1,
+ 'NV002', 'QL002', 0),
+
+('PXN003', '2026-09-18 08:30:00', 0,
+ 'NV001', 'QL002', 0),
+
+('PXN004', '2026-09-20 10:00:00', 1,
+ 'NV002', 'QL001', 0);
+
+
+-- ==========================================================
+-- 22. CHI TIẾT PHIẾU XUẤT NVL
+-- ==========================================================
+
+INSERT INTO CHITIETPHIEUXUATNVL
+(maPX, maNVL, soLuong) VALUES
+
+-- PXN001
+('PXN001', 'NVL001', 20),
+('PXN001', 'NVL003', 10),
+('PXN001', 'NVL015', 100),
+('PXN001', 'NVL020', 20),
+
+-- PXN002
+('PXN002', 'NVL005', 30),
+('PXN002', 'NVL015', 100),
+('PXN002', 'NVL010', 10),
+('PXN002', 'NVL021', 20),
+
+-- PXN003 - Chưa duyệt
+('PXN003', 'NVL001', 20),
+('PXN003', 'NVL002', 15),
+('PXN003', 'NVL017', 10),
+('PXN003', 'NVL019', 10),
+
+-- PXN004
+('PXN004', 'NVL004', 40),
+('PXN004', 'NVL006', 10),
+('PXN004', 'NVL015', 100),
+('PXN004', 'NVL010', 10);
+
+
+-- ==========================================================
+-- 23. PHIẾU XUẤT THÀNH PHẨM
+-- ==========================================================
+
+INSERT INTO PHIEUXUATTP
+(maPX, ngayXuat, trangThai, maNV, maQL, loaiPhieu) VALUES
+
+('PXT001', '2026-09-11 14:00:00', 1,
+ 'NV001', 'QL001', 1),
+
+('PXT002', '2026-09-16 15:00:00', 1,
+ 'NV002', 'QL002', 1),
+
+('PXT003', '2026-09-21 09:00:00', 0,
+ 'NV001', 'QL001', 1);
+
+
+-- ==========================================================
+-- 24. CHI TIẾT PHIẾU XUẤT THÀNH PHẨM
+-- ==========================================================
+
+INSERT INTO CHITIETPHIEUXUATTP
+(maPX, maTP, soLuong) VALUES
+
+-- PXT001
+('PXT001', 'TP001', 5),
+('PXT001', 'TP003', 10),
+
+-- PXT002
+('PXT002', 'TP005', 3),
+('PXT002', 'TP007', 5),
+
+-- PXT003 - Chưa duyệt
+('PXT003', 'TP002', 3),
+('PXT003', 'TP009', 2);
+
+
+-- ==========================================================
+-- 25. YÊU CẦU SẢN XUẤT
+-- ==========================================================
+
+INSERT INTO YEUCAU
+(maYC, ngayYC, maNV) VALUES
+
+('YC001', '2026-09-05 08:00:00', 'QL001'),
+('YC002', '2026-09-09 09:00:00', 'QL002'),
+('YC003', '2026-09-14 10:00:00', 'QL001'),
+('YC004', '2026-09-19 08:30:00', 'QL002');
+
+
+-- ==========================================================
+-- 26. CHI TIẾT YÊU CẦU SẢN XUẤT
+-- ==========================================================
+
+INSERT INTO CHITIETYEUCAU
+(maYC, maTP, soLuong) VALUES
+
+-- YC001
+('YC001', 'TP001', 20),
+('YC001', 'TP003', 15),
+
+-- YC002
+('YC002', 'TP005', 10),
+('YC002', 'TP006', 8),
+
+-- YC003
+('YC003', 'TP007', 15),
+('YC003', 'TP008', 10),
+
+-- YC004
+('YC004', 'TP009', 5),
+('YC004', 'TP010', 8);
