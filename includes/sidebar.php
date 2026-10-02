@@ -30,6 +30,20 @@ $navItemClass = static function (string $page) use ($currentPage): string {
             </a>
         </div>
 
+        <!-- QUẢN TRỊ (chỉ Quản lý kho) -->
+        <?php if ($isManager): ?>
+            <div>
+                <div class="text-[11px] font-bold text-slate-500 mb-2 px-3">QUẢN TRỊ</div>
+                <ul class="space-y-1">
+                    <li>
+                        <a href="employees.php" class="<?= $navItemClass('employees.php') ?>" <?= $currentPage === 'employees.php' ? 'aria-current="page"' : '' ?>>
+                            <i class="fa-solid fa-users-gear text-sky-400 w-5 text-center"></i> Quản lý nhân viên
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        <?php endif; ?>
+
         <!-- NHIỆM VỤ QUẢN LÝ KHO -->
         <div>
             <div class="flex justify-between items-center mb-2 px-3">

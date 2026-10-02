@@ -42,12 +42,20 @@ CREATE TABLE IF NOT EXISTS NGUYENVATLIEU (
 -- vaiTro:
 -- 0 = Quản lý kho
 -- 1 = Nhân viên kho
+-- trangThai:
+-- 0 = Đã nghỉ việc
+-- 1 = Xin nghỉ phép
+-- 2 = Hoạt động
+--
+-- Lưu ý: nếu bảng NHANVIEN đã tồn tại, chạy lệnh sau để bổ sung cột trạng thái:
+-- ALTER TABLE NHANVIEN ADD COLUMN trangThai TINYINT NOT NULL DEFAULT 2 AFTER vaiTro;
 -- ==========================================================
 
 CREATE TABLE IF NOT EXISTS NHANVIEN (
     maNV VARCHAR(10) PRIMARY KEY,
     hoTen VARCHAR(50) NOT NULL,
     vaiTro BOOLEAN NOT NULL DEFAULT 1,
+    trangThai TINYINT NOT NULL DEFAULT 2,
     matKhau VARCHAR(255) NOT NULL,
     sdt VARCHAR(12) NOT NULL,
     diaChi VARCHAR(50) NOT NULL
@@ -289,21 +297,18 @@ INSERT INTO DONVITINH (maDVT, tenDVT) VALUES
 -- 2 nhân viên kho
 -- 2 quản lý
 -- ==========================================================
+INSERT INTO NHANVIEN (maNV, hoTen, vaiTro, trangThai, matKhau, sdt, diaChi) VALUES
+-- Quản lý / Trưởng kho (vaiTro = 0)
+('QL001', 'Lê Minh Hoàng', 0, 1, '$2y$10$pSJ5.rDmJcfqlKGaFoLeSeYIPZ2ubUAIycCB1PhfIIWYZScctuuy6', '0902000001', 'Quận 5, TP.HCM'),
+('QL002', 'Phạm Quốc Huy', 0, 1, '$2y$10$pSJ5.rDmJcfqlKGaFoLeSeYIPZ2ubUAIycCB1PhfIIWYZScctuuy6', '0902000002', 'Quận 10, TP.HCM'),
 
-INSERT INTO NHANVIEN
-(maNV, hoTen, vaiTro,matKhau, sdt, diaChi) VALUES
+-- Nhân viên / Thủ kho / Kiểm kê (vaiTro = 1, trangThai = 1: Đang làm việc)
+('NV001', 'Nguyễn Văn An', 1, 1, '$2y$10$pSJ5.rDmJcfqlKGaFoLeSeYIPZ2ubUAIycCB1PhfIIWYZScctuuy6', '0901000001', 'Quận 1, TP.HCM'),
+('NV002', 'Trần Văn Bình', 1, 1, '$2y$10$pSJ5.rDmJcfqlKGaFoLeSeYIPZ2ubUAIycCB1PhfIIWYZScctuuy6', '0901000002', 'Quận 3, TP.HCM'),
+('NV003', 'Võ Thị Mai', 1, 1, '$2y$10$pSJ5.rDmJcfqlKGaFoLeSeYIPZ2ubUAIycCB1PhfIIWYZScctuuy6', '0901000003', 'Tân Bình, TP.HCM'),
 
-('NV001', 'Nguyễn Văn An', 1, '$2y$10$pSJ5.rDmJcfqlKGaFoLeSeYIPZ2ubUAIycCB1PhfIIWYZScctuuy6',
- '0901000001', 'Quận 1, TP.HCM'),
-
-('NV002', 'Trần Văn Bình', 1, '$2y$10$pSJ5.rDmJcfqlKGaFoLeSeYIPZ2ubUAIycCB1PhfIIWYZScctuuy6',
- '0901000002', 'Quận 3, TP.HCM'),
-
-('QL001', 'Lê Minh Hoàng', 0, '$2y$10$pSJ5.rDmJcfqlKGaFoLeSeYIPZ2ubUAIycCB1PhfIIWYZScctuuy6',
- '0902000001', 'Quận 5, TP.HCM'),
-
-('QL002', 'Phạm Quốc Huy', 0, '$2y$10$pSJ5.rDmJcfqlKGaFoLeSeYIPZ2ubUAIycCB1PhfIIWYZScctuuy6',
- '0902000002', 'Quận 10, TP.HCM');
+-- Nhân viên nghỉ việc hoặc tạm khóa tài khoản (trangThai = 0 hoặc 2)
+('NV004', 'Hoàng Văn Cường', 1, 0, '$2y$10$pSJ5.rDmJcfqlKGaFoLeSeYIPZ2ubUAIycCB1PhfIIWYZScctuuy6', '0901000004', 'Bình Thạnh, TP.HCM');
 
 
 -- ==========================================================
