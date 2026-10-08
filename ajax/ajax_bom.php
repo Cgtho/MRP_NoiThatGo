@@ -24,11 +24,13 @@ if (isset($_GET['action']) && $_GET['action'] == 'get_bom') {
         // Query lấy chi tiết BOM và số lượng tồn kho của NVL đó
         $sql = "SELECT 
                     ct.maNVL, 
-                    nvl.tenNVL, 
+                    nvl.tenNVL,
+                    dvt.tenDVT AS donViTinh,
                     ct.soLuong AS dinhMuc, 
                     nvl.soLuong AS tonKho
                 FROM CHITIETTHANHPHAM ct
                 JOIN NGUYENVATLIEU nvl ON ct.maNVL = nvl.maNVL
+                LEFT JOIN DONVITINH dvt ON nvl.maDVT = dvt.maDVT
                 WHERE ct.maTP = :maTP";
         
         $stmt = $pdo->prepare($sql);

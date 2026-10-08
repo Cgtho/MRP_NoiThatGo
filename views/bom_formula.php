@@ -1,257 +1,182 @@
-<?php require_once '../includes/header.php'; ?>
+<?php
+require_once '../includes/header.php';
+require_once '../config.php';
+require_once '../includes/csrf.php';
 
-<!-- Header màn hình -->
+$isManager = (int) ($_SESSION['role'] ?? 1) === 0;
+$products = [];
+$materials = [];
+$units = [];
+$productError = null;
+
+try {
+    $stmt = $pdo->query(
+        'SELECT tp.maTP, tp.tenTP, tp.donViTinh, tp.soLuong,
+                COUNT(ct.maNVL) AS soLuongVatTu
+         FROM THANHPHAM tp
+         LEFT JOIN CHITIETTHANHPHAM ct ON ct.maTP = tp.maTP
+         GROUP BY tp.maTP, tp.tenTP, tp.donViTinh, tp.soLuong
+         ORDER BY tp.maTP ASC'
+    );
+    $products = $stmt->fetchAll();
+    $materials = $pdo->query(
+        'SELECT nvl.maNVL, nvl.tenNVL, nvl.soLuong, dvt.tenDVT
+         FROM NGUYENVATLIEU nvl
+         LEFT JOIN DONVITINH dvt ON dvt.maDVT = nvl.maDVT
+         ORDER BY nvl.tenNVL ASC'
+    )->fetchAll();
+    $units = $pdo->query('SELECT maDVT, tenDVT FROM DONVITINH ORDER BY tenDVT ASC')->fetchAll();
+} catch (PDOException $e) {
+    $productError = 'Không thể tải danh sách thành phẩm từ cơ sở dữ liệu.';
+}
+?>
+
 <div class="flex justify-between items-center mb-6">
-    <div>
-        <div class="flex items-center gap-3">
-            <div class="bg-blue-100 text-blue-600 p-2 rounded-lg text-xl"><i class="fa-solid fa-layer-group"></i></div>
-            <div>
-                <h2 class="text-xl font-bold text-slate-800">Định Mức Cấu Thành Sản Phẩm (BOM - Bill of Materials)</h2>
-                <p class="text-xs text-slate-500">Khai báo công thức sản phẩm: 1 sản phẩm hoàn chỉnh cần bao nhiêu nguyên vật liệu chi tiết (Bảng CHITIETTHANHPHAM).</p>
-            </div>
+    <div class="flex items-center gap-3">
+        <div class="bg-blue-100 text-blue-600 p-2 rounded-lg text-xl"><i class="fa-solid fa-layer-group"></i></div>
+        <div>
+            <h2 class="text-xl font-bold text-slate-800">Định Mức Cấu Thành Sản Phẩm (BOM)</h2>
+            <p class="text-xs text-slate-500">Chọn một thành phẩm để xem chi tiết định mức nguyên vật liệu.</p>
         </div>
     </div>
-    <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition flex items-center gap-2"
-    id="btn-open-add-product">
-        <i class="fa-solid fa-plus"></i> Thêm Sản Phẩm & Định Mức Mới
-    </button>
+    <?php if ($isManager): ?>
+        <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition flex items-center gap-2" id="btn-open-add-product" type="button">
+            <i class="fa-solid fa-plus"></i> Thêm Sản Phẩm & Định Mức Mới
+        </button>
+    <?php endif; ?>
 </div>
+
+<?php if ($productError): ?>
+    <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+        <?= htmlspecialchars($productError, ENT_QUOTES, 'UTF-8') ?>
+    </div>
+<?php endif; ?>
 
 <div class="flex gap-6 items-start">
-    <!-- CỘT TRÁI: Danh sách -->
     <div class="w-1/3 shrink-0">
         <div class="flex justify-between items-end mb-3 px-1">
-            <h3 class="font-bold text-slate-700 text-xs uppercase">DANH SÁCH THÀNH PHẨM (3)</h3>
-            <span class="text-xs text-blue-500 font-medium">BẢNG THANHPHAM</span>
+            <h3 class="font-bold text-slate-700 text-xs uppercase">DANH SÁCH THÀNH PHẨM (<?= count($products) ?>)</h3>
         </div>
-        
-        <div class="space-y-3">
-            <!-- Active Item -->
-            <div class="bg-white border-2 border-blue-500 rounded-xl p-4 shadow-sm cursor-pointer relative overflow-hidden">
-                <div class="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
-                <div class="flex justify-between items-start mb-1">
-                    <div class="flex items-center gap-2">
-                        <span class="bg-blue-600 text-white text-xs font-bold px-2 py-0.5 rounded">TP01</span>
-                        <h4 class="font-bold text-slate-800 text-base">Bàn làm việc chữ U</h4>
-                    </div>
-                    <span class="text-emerald-500 font-medium text-sm">45 tồn kho</span>
-                </div>
-                <div class="flex justify-between items-center text-xs text-slate-500">
-                    <span>Đơn vị tính: Cái</span>
-                    <span>4 loại vật tư</span>
-                </div>
-            </div>
-
-            <!-- Inactive Item -->
-            <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm cursor-pointer hover:border-blue-300 transition">
-                <div class="flex justify-between items-start mb-1">
-                    <div class="flex items-center gap-2">
-                        <span class="bg-slate-200 text-slate-600 text-xs font-bold px-2 py-0.5 rounded">TP02</span>
-                        <h4 class="font-bold text-slate-800 text-base">Ghế xoay văn phòng</h4>
-                    </div>
-                    <span class="text-emerald-500 font-medium text-sm">30 tồn kho</span>
-                </div>
-                <div class="flex justify-between items-center text-xs text-slate-500">
-                    <span>Đơn vị tính: Cái</span>
-                    <span>4 loại vật tư</span>
-                </div>
-            </div>
-            
-            <!-- Inactive Item -->
-            <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm cursor-pointer hover:border-blue-300 transition">
-                <div class="flex justify-between items-start mb-1">
-                    <div class="flex items-center gap-2">
-                        <span class="bg-slate-200 text-slate-600 text-xs font-bold px-2 py-0.5 rounded">TP03</span>
-                        <h4 class="font-bold text-slate-800 text-base">Bàn họp chân sắt</h4>
-                    </div>
-                    <span class="text-emerald-500 font-medium text-sm">12 tồn kho</span>
-                </div>
-                <div class="flex justify-between items-center text-xs text-slate-500">
-                    <span>Đơn vị tính: Cái</span>
-                    <span>4 loại vật tư</span>
-                </div>
-            </div>
+        <!-- Ô tìm kiếm sản phẩm -->
+        <div class="mb-3">
+            <input type="text" id="productSearch" placeholder="Tìm kiếm theo mã hoặc tên..." class="w-full px-4 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:border-blue-500 shadow-sm">
+        </div>
+        <div class="max-h-[520px] space-y-3 overflow-y-auto pr-2 scrollbar-custom" id="productList">
+            <?php if (!$products): ?>
+                <div class="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">Chưa có thành phẩm.</div>
+            <?php else: ?>
+                <?php foreach ($products as $product): ?>
+                    <button type="button" class="product-item w-full bg-white border border-slate-200 rounded-xl p-4 shadow-sm cursor-pointer text-left hover:border-blue-300 transition" data-matp="<?= htmlspecialchars($product['maTP'], ENT_QUOTES, 'UTF-8') ?>" data-name="<?= htmlspecialchars($product['tenTP'], ENT_QUOTES, 'UTF-8') ?>" data-unit="<?= htmlspecialchars($product['donViTinh'], ENT_QUOTES, 'UTF-8') ?>">
+                        <span class="flex justify-between items-start mb-1">
+                            <span class="flex items-center gap-2">
+                                <span class="product-code bg-slate-200 text-slate-600 text-xs font-bold px-2 py-0.5 rounded"><?= htmlspecialchars($product['maTP'], ENT_QUOTES, 'UTF-8') ?></span>
+                                <span class="font-bold text-slate-800 text-base"><?= htmlspecialchars($product['tenTP'], ENT_QUOTES, 'UTF-8') ?></span>
+                            </span>
+                            <span class="text-emerald-500 font-medium text-sm"><?= htmlspecialchars($product['soLuong'], ENT_QUOTES, 'UTF-8') ?> tồn kho</span>
+                        </span>
+                        <span class="flex justify-between items-center text-xs text-slate-500">
+                            <span>Đơn vị tính: <?= htmlspecialchars($product['donViTinh'], ENT_QUOTES, 'UTF-8') ?></span>
+                            <span><?= (int) $product['soLuongVatTu'] ?> loại vật tư</span>
+                        </span>
+                    </button>
+                <?php endforeach; ?>
+            <?php endif; ?>
         </div>
     </div>
 
-    <!-- CỘT PHẢI: Chi tiết định mức -->
     <div class="w-2/3 bg-white border border-slate-200 rounded-xl shadow-sm p-6">
-        <!-- Thông tin sản phẩm đang chọn -->
-        <div class="flex justify-between items-start border-b border-slate-100 pb-4 mb-4">
-            <div>
-                <div class="flex items-center gap-2 mb-1">
-                    <span class="text-blue-600 font-bold text-sm">Mã TP: TP01</span>
-                    <h3 class="text-2xl font-bold text-slate-800">Bàn làm việc chữ U</h3>
-                </div>
-                <p class="text-slate-500 text-xs">Công thức định mức cấu thành cho 1 Cái sản phẩm.</p>
-            </div>
-            <div class="flex items-center gap-3">
-                <div class="bg-emerald-50 text-emerald-700 text-xs px-3 py-2 rounded-lg border border-emerald-200">
-                    Tồn kho vật tư hiện tại có thể sản xuất tối đa: <strong class="text-base">95</strong> Cái
-                </div>
-                <button class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition flex items-center gap-2"
-                id="btn-open-add-material">
-                    <i class="fa-solid fa-plus"></i> Thêm Vật Tư Vào BOM
-                </button>
-            </div>
+        <div id="bomEmptyState" class="py-16 text-center text-slate-400">
+            <i class="fa-solid fa-hand-pointer text-3xl mb-3"></i>
+            <p>Chọn một thành phẩm để xem chi tiết định mức.</p>
         </div>
-
-        <!-- Bảng chi tiết NVL -->
-        <div class="flex justify-between items-end mb-3">
-            <h4 class="font-bold text-slate-700 text-xs uppercase">CHI TIẾT ĐỊNH MỨC VẬT TƯ (BẢNG CHITIETTHANHPHAM)</h4>
-            <span class="text-[11px] text-slate-400">Dữ liệu gốc tính toán nhu cầu sản xuất</span>
-        </div>
-        
-        <div class="overflow-x-auto rounded-lg border border-slate-200 mb-6">
-            <table class="w-full text-left text-sm">
-                <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-semibold">
-                    <tr>
-                        <th class="px-4 py-3">Mã NVL</th>
-                        <th class="px-4 py-3">Tên Nguyên Vật Liệu</th>
-                        <th class="px-4 py-3">Đơn vị tính</th>
-                        <th class="px-4 py-3 text-center">Định mức (1 SP)</th>
-                        <th class="px-4 py-3 text-right">Tồn kho thực tế</th>
-                        <th class="px-4 py-3 text-center">Khả năng đáp ứng</th>
-                        <th class="px-4 py-3 text-center">Thao tác</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                    <tr class="hover:bg-slate-50 transition">
-                        <td class="px-4 py-3 font-medium text-slate-800">NVL01</td>
-                        <td class="px-4 py-3">Mặt bàn gỗ sồi (120x60cm)</td>
-                        <td class="px-4 py-3 text-slate-500">Cái</td>
-                        <td class="px-4 py-3 text-center font-bold text-blue-600">1</td>
-                        <td class="px-4 py-3 text-right font-medium">145 Cái</td>
-                        <td class="px-4 py-3 text-center"><span class="bg-emerald-100 text-emerald-700 text-[10px] px-2 py-1 rounded-full font-medium">Làm được 145 cái</span></td>
-                        <td class="px-4 py-3 text-center text-slate-400 hover:text-red-500 cursor-pointer"><i class="fa-regular fa-trash-can"></i></td>
-                    </tr>
-                    <tr class="hover:bg-slate-50 transition">
-                        <td class="px-4 py-3 font-medium text-slate-800">NVL02</td>
-                        <td class="px-4 py-3">Chân bàn sắt sơn tĩnh điện</td>
-                        <td class="px-4 py-3 text-slate-500">Cái</td>
-                        <td class="px-4 py-3 text-center font-bold text-blue-600">4</td>
-                        <td class="px-4 py-3 text-right font-medium">380 Cái</td>
-                        <td class="px-4 py-3 text-center"><span class="bg-emerald-100 text-emerald-700 text-[10px] px-2 py-1 rounded-full font-medium">Làm được 95 cái</span></td>
-                        <td class="px-4 py-3 text-center text-slate-400 hover:text-red-500 cursor-pointer"><i class="fa-regular fa-trash-can"></i></td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Công cụ mô phỏng -->
-        <div class="bg-blue-50 border border-blue-100 rounded-xl p-5">
-            <div class="flex justify-between items-center mb-4">
-                <div class="flex items-center gap-2 text-blue-800 font-bold text-sm">
-                    <i class="fa-solid fa-calculator"></i> CÔNG CỤ MÔ PHỎNG NHU CẦU VẬT TƯ THEO ĐỊNH MỨC
+        <div id="bomSimulationArea" class="hidden">
+            <div class="border-b border-slate-100 pb-4 mb-4">
+                <span id="selectedProductCode" class="inline-block rounded bg-blue-100 px-3 py-1 text-sm font-bold text-blue-700 shadow-sm"></span>
+                <div class="mt-3 w-full rounded-lg border border-slate-200 bg-slate-50 p-4 shadow-sm">
+                    <h3 id="selectedProductName" class="text-xl font-bold text-slate-800 uppercase tracking-wide"></h3>
                 </div>
-                <div class="flex items-center gap-2">
-                    <span class="text-xs text-slate-600">Nhập số lượng cần làm:</span>
-                    <input type="number" value="100" class="w-20 px-2 py-1 border border-slate-300 rounded text-right font-bold text-blue-600 focus:outline-none focus:border-blue-500">
-                    <span class="text-xs text-slate-600">Cái</span>
-                </div>
+                <p class="mt-2 text-slate-500 text-xs">Công thức định mức cấu thành cho 1 sản phẩm.</p>
             </div>
-            
-            <div class="grid grid-cols-4 gap-3">
-                <!-- Đủ vật tư -->
-                <div class="bg-white border-l-4 border-emerald-500 p-3 rounded shadow-sm">
-                    <div class="text-[11px] text-slate-500 truncate mb-1">Mặt bàn gỗ sồi (120x60cm)</div>
-                    <div class="font-bold text-slate-800">Cần: 100</div>
-                    <div class="text-[10px] text-emerald-600 mt-1">Kho đủ đáp ứng</div>
-                </div>
-                <!-- Thiếu vật tư (Báo đỏ) -->
-                <div class="bg-white border-l-4 border-red-500 p-3 rounded shadow-sm">
-                    <div class="text-[11px] text-slate-500 truncate mb-1">Chân bàn sắt sơn tĩnh điện</div>
-                    <div class="font-bold text-slate-800">Cần: 400</div>
-                    <div class="text-[10px] text-red-500 font-semibold mt-1">Thiếu 20 cái!</div>
-                </div>
+            <div class="flex justify-between items-end mb-3">
+                <h4 class="font-bold text-slate-700 text-xs uppercase">CHI TIẾT ĐỊNH MỨC VẬT TƯ</h4>
+                <span class="text-[11px] text-slate-400">Dữ liệu gốc tính toán nhu cầu sản xuất</span>
             </div>
-        </div>
-        
-    </div>
-</div>
-
-<!-- ==========================================
-     MODAL 1: Khai Báo Thành Phẩm & Định Mức[cite: 16]
-     ========================================== -->
-<div id="modal-add-product" class="fixed inset-0 z-50 hidden bg-slate-900/50 flex items-center justify-center transition-opacity">
-    <div class="bg-white rounded-xl w-full max-w-[600px] shadow-2xl flex flex-col">
-        <!-- Header -->
-        <div class="flex justify-between items-center p-5 border-b border-slate-100">
-            <h3 class="font-bold text-slate-800 text-lg">Khai Báo Thành Phẩm & Định Mức Mới</h3>
-            <button class="close-modal text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
-        </div>
-        <!-- Body -->
-        <div class="p-6 space-y-4">
-            <div class="flex gap-4">
-                <div class="flex-1">
-                    <label class="block text-[11px] font-medium text-slate-600 mb-1">Mã thành phẩm (PK: maTP)</label>
-                    <input type="text" value="TP04" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
-                </div>
-                <div class="flex-1">
-                    <label class="block text-[11px] font-medium text-slate-600 mb-1">Đơn vị tính (donViTinh)</label>
-                    <select class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
-                        <option>Cái</option>
-                        <option>Bộ</option>
-                    </select>
-                </div>
+            <div class="overflow-x-auto rounded-lg border border-slate-200 mb-6">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-slate-50 text-slate-500 text-xs uppercase font-semibold">
+                        <tr>
+                            <th class="px-4 py-3">Mã NVL</th>
+                            <th class="px-4 py-3">Tên Nguyên Vật Liệu</th>
+                            <th class="px-4 py-3">Đơn vị tính</th>
+                            <th class="px-4 py-3">Định mức</th>
+                            <th class="px-4 py-3">Tồn kho thực tế</th>
+                            <th class="px-4 py-3">Khả năng đáp ứng</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bomTableBody" class="divide-y divide-slate-100"></tbody>
+                </table>
             </div>
-            <div>
-                <label class="block text-[11px] font-medium text-slate-600 mb-1">Tên thành phẩm (tenTP)</label>
-                <input type="text" placeholder="VD: Bàn máy tính gaming chữ K" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
-            </div>
-            <div>
-                <div class="flex justify-between items-end mb-1">
-                    <label class="block text-[11px] font-medium text-slate-600">Định mức vật tư (CHITIETTHANHPHAM)</label>
-                    <button class="text-blue-600 hover:text-blue-700 text-xs font-medium">+ Thêm dòng vật tư</button>
-                </div>
-                <div class="flex gap-3">
-                    <select class="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 text-slate-700">
-                        <option>Mặt bàn gỗ sồi (120x60cm) (NVL01)</option>
-                    </select>
-                    <input type="number" value="1" class="w-20 border border-slate-300 rounded-lg px-3 py-2 text-sm text-center focus:outline-none focus:border-blue-500 text-slate-700">
-                </div>
-            </div>
-        </div>
-        <!-- Footer -->
-        <div class="p-5 border-t border-slate-100 flex justify-end items-center gap-4 bg-slate-50 rounded-b-xl">
-            <button class="close-modal text-sm font-medium text-slate-500 hover:text-slate-800 transition">Hủy Bỏ</button>
-            <button class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-medium shadow-sm transition">Lưu Thành Phẩm & Định Mức</button>
         </div>
     </div>
 </div>
 
-<!-- ==========================================
-     MODAL 2: Thêm Vật Tư Vào BOM[cite: 17]
-     ========================================== -->
-<div id="modal-add-material" class="fixed inset-0 z-50 hidden bg-slate-900/50 flex items-center justify-center transition-opacity">
-    <div class="bg-white rounded-xl w-full max-w-[500px] shadow-2xl flex flex-col">
-        <!-- Header -->
-        <div class="flex justify-between items-center p-5 border-b border-slate-100">
-            <h3 class="font-bold text-slate-800 text-lg">Thêm Vật Tư Vào BOM (aaa)</h3>
-            <button class="close-modal text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
-        </div>
-        <!-- Body -->
-        <div class="p-6 space-y-4">
-            <div>
-                <label class="block text-[11px] font-medium text-slate-600 mb-1">Chọn nguyên vật liệu (NGUYENVATLIEU)</label>
-                <select class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 text-slate-700">
-                    <option>Mặt bàn gỗ sồi (120x60cm) (NVL01) - Tồn: 145</option>
-                    <option>Chân bàn sắt sơn tĩnh điện (NVL02) - Tồn: 380</option>
-                </select>
+<?php if ($isManager): ?>
+    <div id="modal-add-product" class="fixed inset-0 z-50 hidden bg-slate-900/50 flex items-center justify-center">
+        <div class="bg-white rounded-xl w-full max-w-[600px] shadow-2xl p-6 max-h-[90vh] overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="addProductTitle">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-4">
+                <h3 id="addProductTitle" class="font-bold text-slate-800 text-lg">Khai Báo Thành Phẩm & Định Mức Mới</h3>
+                <button class="close-modal text-slate-400 hover:text-slate-600" type="button" aria-label="Đóng"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
-            <div>
-                <label class="block text-[11px] font-medium text-slate-600 mb-1">Số lượng định mức cần dùng cho 1 sản phẩm</label>
-                <input type="number" value="1" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 text-slate-700">
-            </div>
-        </div>
-        <!-- Footer -->
-        <div class="p-5 border-t border-slate-100 flex justify-end items-center gap-4 bg-slate-50 rounded-b-xl">
-            <button class="close-modal text-sm font-medium text-slate-500 hover:text-slate-800 transition">Đóng</button>
-            <button class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-medium shadow-sm transition">Cập Nhật Định Mức</button>
+            <form id="addProductForm" action="../ajax/add_bom_product.php" method="post" class="pt-5">
+                <?= csrf_field() ?>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="productCode" class="mb-1 block text-sm font-medium text-slate-700">Mã thành phẩm</label>
+                        <input id="productCode" name="maTP" type="text" maxlength="10" required placeholder="Ví dụ: TP04" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm uppercase outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="productUnit" class="mb-1 block text-sm font-medium text-slate-700">Đơn vị tính</label>
+                        <select id="productUnit" name="donViTinh" required class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500">
+                            <option value="">-- Chọn đơn vị --</option>
+                            <?php foreach ($units as $unit): ?>
+                                <option value="<?= htmlspecialchars($unit['tenDVT'], ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($unit['tenDVT'], ENT_QUOTES, 'UTF-8') ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <label for="productName" class="mb-1 block text-sm font-medium text-slate-700">Tên thành phẩm</label>
+                    <input id="productName" name="tenTP" type="text" maxlength="100" required placeholder="Ví dụ: Bàn máy tính gaming chữ K" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500">
+                </div>
+                <div class="mt-5">
+                    <div class="mb-2 flex items-center justify-between">
+                        <label class="block text-sm font-medium text-slate-700">Định mức vật tư</label>
+                        <button id="addMaterialRow" type="button" class="text-sm font-medium text-blue-600 hover:text-blue-700">+ Thêm dòng vật tư</button>
+                    </div>
+                    <div id="materialRows" class="space-y-3">
+                        <div class="material-row flex items-center gap-3">
+                            <select name="materials[0][maNVL]" required class="material-select min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500">
+                                <option value="">-- Chọn nguyên vật liệu --</option>
+                                <?php foreach ($materials as $material): ?>
+                                    <option value="<?= htmlspecialchars($material['maNVL'], ENT_QUOTES, 'UTF-8') ?>">
+                                        <?= htmlspecialchars($material['tenNVL'], ENT_QUOTES, 'UTF-8') ?> (<?= htmlspecialchars($material['maNVL'], ENT_QUOTES, 'UTF-8') ?>)
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <input name="materials[0][soLuong]" type="number" min="0.0001" step="any" required value="1" class="w-24 rounded-lg border border-slate-300 px-3 py-2 text-center text-sm outline-none focus:border-blue-500">
+                            <button type="button" class="remove-material-row hidden text-slate-400 hover:text-red-600" aria-label="Xóa dòng"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+                </div>
+                <p id="addProductMessage" class="mt-4 hidden rounded-lg px-3 py-2 text-sm" role="alert"></p>
+                <div class="mt-5 flex justify-end gap-2 border-t border-slate-100 pt-4">
+                    <button class="close-modal rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50" type="button">Hủy bỏ</button>
+                    <button id="saveProductButton" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700" type="submit">Lưu Thành Phẩm & Định Mức</button>
+                </div>
+            </form>
         </div>
     </div>
-</div>
+<?php endif; ?>
 
 <script src="../assets/js/bom.js"></script>
-
 <?php require_once '../includes/footer.php'; ?>
