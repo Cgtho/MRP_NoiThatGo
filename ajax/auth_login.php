@@ -36,7 +36,7 @@ if ($employeeId === '' || $password === '') {
 
 try {
     $stmt = $pdo->prepare(
-        'SELECT maNV, hoTen, vaiTro, matKhau
+        'SELECT maNV, hoTen, vaiTro, trangThai, matKhau
          FROM NHANVIEN
          WHERE maNV = :maNV
          LIMIT 1'
@@ -47,6 +47,12 @@ try {
     if (!$employee || !password_verify($password, $employee['matKhau'])) {
         http_response_code(401);
         echo json_encode(['success' => false, 'message' => 'Mã nhân viên hoặc mật khẩu không đúng.']);
+        exit;
+    }
+
+    if ((int) $employee['trangThai'] !== 1) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Tài khoản đã bị khóa hoặc không còn hoạt động.']);
         exit;
     }
 

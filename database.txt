@@ -44,8 +44,7 @@ CREATE TABLE IF NOT EXISTS NGUYENVATLIEU (
 -- 1 = Nhân viên kho
 -- trangThai:
 -- 0 = Đã nghỉ việc
--- 1 = Xin nghỉ phép
--- 2 = Hoạt động
+-- 1 = Hoạt động
 --
 -- Lưu ý: nếu bảng NHANVIEN đã tồn tại, chạy lệnh sau để bổ sung cột trạng thái:
 -- ALTER TABLE NHANVIEN ADD COLUMN trangThai TINYINT NOT NULL DEFAULT 2 AFTER vaiTro;

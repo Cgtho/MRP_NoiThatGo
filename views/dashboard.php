@@ -4,24 +4,95 @@ require_once '../config.php';
 
 $isManager = (int) ($_SESSION['role'] ?? 1) === 0;
 $pendingTasks = 0;
-if ($isManager) {
-    $stmt = $pdo->prepare(
-        'SELECT
-            (SELECT COUNT(*) FROM PHIEUXUATNVL WHERE maQL = :maQL_NVL AND trangThai = 0)
-            +
-            (SELECT COUNT(*) FROM PHIEUXUATTP WHERE maQL = :maQL_TP AND trangThai = 0) AS totalTasks'
+$dashboardError = null;
+$stats = ['materialKinds' => 0, 'materialQty' => 0, 'productKinds' => 0, 'productQty' => 0, 'pendingExports' => 0, 'orders' => 0];
+$pendingExports = [];
+$productionOrders = [];
+
+try {
+    if ($isManager) {
+        $stmt = $pdo->prepare(
+            'SELECT
+                (SELECT COUNT(*) FROM PHIEUXUATNVL WHERE maQL = :maQL_NVL AND trangThai = 0)
+                +
+                (SELECT COUNT(*) FROM PHIEUXUATTP WHERE maQL = :maQL_TP AND trangThai = 0)'
+        );
+        $stmt->execute(['maQL_NVL' => $_SESSION['current_user'], 'maQL_TP' => $_SESSION['current_user']]);
+    } else {
+        $stmt = $pdo->prepare('SELECT COUNT(*) FROM YEUCAU WHERE maNV = :maNV');
+        $stmt->execute(['maNV' => $_SESSION['current_user']]);
+    }
+    $pendingTasks = (int) $stmt->fetchColumn();
+
+    $stats['materialKinds'] = (int) $pdo->query('SELECT COUNT(*) FROM NGUYENVATLIEU')->fetchColumn();
+    $stats['materialQty'] = (int) $pdo->query('SELECT COALESCE(SUM(soLuong), 0) FROM NGUYENVATLIEU')->fetchColumn();
+    $stats['productKinds'] = (int) $pdo->query('SELECT COUNT(*) FROM THANHPHAM')->fetchColumn();
+    $stats['productQty'] = (int) $pdo->query('SELECT COALESCE(SUM(soLuong), 0) FROM THANHPHAM')->fetchColumn();
+    $stats['orders'] = (int) $pdo->query('SELECT COUNT(*) FROM YEUCAU')->fetchColumn();
+    if ($isManager) {
+        $stats['pendingExports'] = $pendingTasks;
+    } else {
+        $stmt = $pdo->prepare(
+            'SELECT
+                (SELECT COUNT(*) FROM PHIEUXUATNVL WHERE maNV = :maNV_nvl AND trangThai = 0)
+                +
+                (SELECT COUNT(*) FROM PHIEUXUATTP WHERE maNV = :maNV_tp AND trangThai = 0)'
+        );
+        $stmt->execute(['maNV_nvl' => $_SESSION['current_user'], 'maNV_tp' => $_SESSION['current_user']]);
+        $stats['pendingExports'] = (int) $stmt->fetchColumn();
+    }
+
+    // Quản lý xem toàn bộ phiếu chờ; nhân viên chỉ xem phiếu do mình lập.
+    $exportOwnerFilterNvl = $isManager ? '1 = 1' : 'p.maNV = :employeeNvl';
+    $exportOwnerFilterTp = $isManager ? '1 = 1' : 'p.maNV = :employeeTp';
+    $pendingStmt = $pdo->prepare(
+        "SELECT p.maPX, p.ngayXuat, p.maNV, nv.hoTen, 'NVL' AS loai, COUNT(ct.maNVL) AS soDong
+         FROM PHIEUXUATNVL p
+         INNER JOIN NHANVIEN nv ON nv.maNV = p.maNV
+         LEFT JOIN CHITIETPHIEUXUATNVL ct ON ct.maPX = p.maPX
+         WHERE p.trangThai = 0 AND {$exportOwnerFilterNvl}
+         GROUP BY p.maPX, p.ngayXuat, p.maNV, nv.hoTen
+         UNION ALL
+         SELECT p.maPX, p.ngayXuat, p.maNV, nv.hoTen, 'TP' AS loai, COUNT(ct.maTP) AS soDong
+         FROM PHIEUXUATTP p
+         INNER JOIN NHANVIEN nv ON nv.maNV = p.maNV
+         LEFT JOIN CHITIETPHIEUXUATTP ct ON ct.maPX = p.maPX
+         WHERE p.trangThai = 0 AND {$exportOwnerFilterTp}
+         GROUP BY p.maPX, p.ngayXuat, p.maNV, nv.hoTen
+         ORDER BY ngayXuat DESC LIMIT 5"
     );
-    $stmt->execute([
-        'maQL_NVL' => $_SESSION['current_user'],
-        'maQL_TP' => $_SESSION['current_user'],
+    $pendingStmt->execute($isManager ? [] : [
+        'employeeNvl' => $_SESSION['current_user'],
+        'employeeTp' => $_SESSION['current_user'],
     ]);
-    $pendingTasks = (int) $stmt->fetchColumn();
-} else {
-    $stmt = $pdo->prepare('SELECT COUNT(*) FROM YEUCAU WHERE maNV = :maNV');
-    $stmt->execute(['maNV' => $_SESSION['current_user']]);
-    $pendingTasks = (int) $stmt->fetchColumn();
+    $pendingExports = $pendingStmt->fetchAll();
+
+    $productionOrders = $pdo->query(
+        "SELECT yc.maYC, yc.ngayYC, nv.hoTen,
+                GROUP_CONCAT(CONCAT(tp.tenTP, ' (', ct.soLuong, ' ', tp.donViTinh, ')') SEPARATOR ', ') AS sanPham
+         FROM YEUCAU yc
+         INNER JOIN NHANVIEN nv ON nv.maNV = yc.maNV
+         LEFT JOIN CHITIETYEUCAU ct ON ct.maYC = yc.maYC
+         LEFT JOIN THANHPHAM tp ON tp.maTP = ct.maTP
+         GROUP BY yc.maYC, yc.ngayYC, nv.hoTen
+         ORDER BY yc.ngayYC DESC LIMIT 5"
+    )->fetchAll();
+} catch (PDOException $e) {
+    $dashboardError = 'Không thể tải dữ liệu tổng quan từ cơ sở dữ liệu.';
+}
+
+function dashboardDate(string $date): string
+{
+    $timestamp = strtotime($date);
+    return $timestamp === false ? $date : date('d/m/Y H:i', $timestamp);
 }
 ?>
+
+<?php if ($dashboardError): ?>
+    <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+        <?= htmlspecialchars($dashboardError, ENT_QUOTES, 'UTF-8') ?>
+    </div>
+<?php endif; ?>
 
 <!-- Banner Xin Chào -->
 <div class="bg-[#0f172a] rounded-2xl p-6 mb-6 text-white shadow-lg relative overflow-hidden">
@@ -56,8 +127,8 @@ if ($isManager) {
             <i class="fa-solid fa-cubes text-blue-500"></i>
         </div>
         <div>
-            <div class="text-2xl font-bold text-slate-800">8 <span class="text-sm font-normal text-slate-500">chủng loại</span></div>
-            <div class="text-xs text-slate-400 mt-1">3,445 tổng số lượng tồn kho</div>
+            <div class="text-2xl font-bold text-slate-800"><?= number_format($stats['materialKinds']) ?> <span class="text-sm font-normal text-slate-500">chủng loại</span></div>
+            <div class="text-xs text-slate-400 mt-1"><?= number_format($stats['materialQty']) ?> tổng số lượng tồn kho</div>
         </div>
     </div>
     <!-- Card 2 -->
@@ -69,8 +140,8 @@ if ($isManager) {
             <i class="fa-solid fa-box text-emerald-500"></i>
         </div>
         <div>
-            <div class="text-2xl font-bold text-slate-800">87 <span class="text-sm font-normal text-slate-500">sản phẩm</span></div>
-            <div class="text-xs text-slate-400 mt-1">3 danh mục thành phẩm chính</div>
+            <div class="text-2xl font-bold text-slate-800"><?= number_format($stats['productKinds']) ?> <span class="text-sm font-normal text-slate-500">sản phẩm</span></div>
+            <div class="text-xs text-slate-400 mt-1"><?= number_format($stats['productQty']) ?> tổng số lượng tồn kho</div>
         </div>
     </div>
     <!-- Card 3 (Nổi bật) -->
@@ -82,8 +153,8 @@ if ($isManager) {
             <i class="fa-regular fa-clock text-amber-500"></i>
         </div>
         <div>
-            <div class="text-2xl font-bold text-amber-700">1 <span class="text-sm font-normal">phiếu yêu cầu</span></div>
-            <div class="text-xs text-amber-600 mt-1">Nhân viên đang đợi duyệt cấp vật tư</div>
+            <div class="text-2xl font-bold text-amber-700"><?= number_format($stats['pendingExports']) ?> <span class="text-sm font-normal">phiếu yêu cầu</span></div>
+            <div class="text-xs text-amber-600 mt-1"><?= $isManager ? 'Nhân viên đang đợi duyệt cấp vật tư' : 'Phiếu của bạn đang chờ xử lý' ?></div>
         </div>
     </div>
     <!-- Card 4 -->
@@ -95,46 +166,8 @@ if ($isManager) {
             <i class="fa-regular fa-clipboard text-purple-500"></i>
         </div>
         <div>
-            <div class="text-2xl font-bold text-slate-800">2 <span class="text-sm font-normal text-slate-500">đang chạy</span></div>
-            <div class="text-xs text-slate-400 mt-1">Đang sản xuất hoặc chờ kiểm tra định mức</div>
-        </div>
-    </div>
-</div>
-
-<!-- Workflow Box -->
-<div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm mb-6">
-    <div class="flex justify-between items-center mb-4">
-        <div>
-            <h3 class="font-bold text-slate-800">Sơ Đồ Quy Trình Phối Hợp Kho & Sản Xuất (Workflow)</h3>
-            <p class="text-xs text-slate-500">Liên kết chặt chẽ giữa Quản lý kho (định mức, duyệt lệnh) và Nhân viên sản xuất (kiểm tra thiếu đủ, xuất kho, làm xong)</p>
-        </div>
-        <a href="#" class="text-blue-600 text-sm font-medium hover:underline">Xem liên kết các bảng CSDL &rarr;</a>
-    </div>
-    
-    <div class="grid grid-cols-4 gap-4">
-        <div class="p-4 rounded-lg bg-slate-50 border border-slate-100">
-            <div class="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-bold mb-3">1</div>
-            <h4 class="font-semibold text-blue-700 text-sm mb-1">QUẢN LÝ KHO</h4>
-            <p class="font-medium text-slate-800 text-sm mb-2">Định mức BOM & Tạo lệnh SX</p>
-            <p class="text-xs text-slate-500">Khai báo 1 sản phẩm cần bao nhiêu NVL (Bảng CHITIETTHANHPHAM) và phát lệnh YEUCAU (số lượng cần làm).</p>
-        </div>
-        <div class="p-4 rounded-lg bg-slate-50 border border-slate-100">
-            <div class="w-6 h-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-bold mb-3">2</div>
-            <h4 class="font-semibold text-amber-700 text-sm mb-1">NHÂN VIÊN KHO</h4>
-            <p class="font-medium text-slate-800 text-sm mb-2">Kiểm tra NVL & Xin xuất</p>
-            <p class="text-xs text-slate-500">Hệ thống nhân số lượng x BOM, so sánh kho. Nếu thiếu báo đỏ & tạo PHIEUXUATNVL gửi Quản lý.</p>
-        </div>
-        <div class="p-4 rounded-lg bg-slate-50 border border-slate-100">
-            <div class="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold mb-3">3</div>
-            <h4 class="font-semibold text-emerald-700 text-sm mb-1">QUẢN LÝ KHO</h4>
-            <p class="font-medium text-slate-800 text-sm mb-2">Phê duyệt phiếu xuất NVL</p>
-            <p class="text-xs text-slate-500">Quản lý duyệt (trangThai=1). Hệ thống tự động trừ số lượng NVL trong kho NGUYENVATLIEU.</p>
-        </div>
-        <div class="p-4 rounded-lg bg-slate-50 border border-slate-100">
-            <div class="w-6 h-6 rounded-full bg-purple-500 text-white flex items-center justify-center text-xs font-bold mb-3">4</div>
-            <h4 class="font-semibold text-purple-700 text-sm mb-1">NHÂN VIÊN & QUẢN LÝ</h4>
-            <p class="font-medium text-slate-800 text-sm mb-2">Hoàn thành & Xuất bán TP</p>
-            <p class="text-xs text-slate-500">Nhân viên bấm Hoàn thành &rarr; tăng kho THANHPHAM. Lập PHIEUXUATTP để bán, Quản lý duyệt trừ kho.</p>
+            <div class="text-2xl font-bold text-slate-800"><?= number_format($stats['orders']) ?> <span class="text-sm font-normal text-slate-500">lệnh</span></div>
+            <div class="text-xs text-slate-400 mt-1">Tổng số lệnh sản xuất trong hệ thống</div>
         </div>
     </div>
 </div>
@@ -146,100 +179,63 @@ if ($isManager) {
     <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-4">
         <div class="flex justify-between items-center mb-1">
             <h3 class="font-bold text-slate-800 flex items-center gap-2">
-                <i class="fa-regular fa-clock text-amber-500"></i> Phiếu Chờ Phê Duyệt (2)
+                <i class="fa-regular fa-clock text-amber-500"></i> Phiếu Chờ Phê Duyệt (<?= count($pendingExports) ?>)
             </h3>
-            <span class="text-sm text-slate-400">Cần bạn phê duyệt</span>
+            <span class="text-sm text-slate-400"><?= $isManager ? 'Cần bạn phê duyệt' : 'Đang chờ xử lý' ?></span>
         </div>
 
-        <!-- Card 1: PXNVL -->
-        <div class="border border-amber-200 rounded-lg p-4 flex justify-between items-center bg-white shadow-sm">
-            <div>
-                <div class="flex items-center gap-2 mb-1.5">
-                    <span class="font-bold text-amber-700">PXNVL-002</span>
-                    <span class="bg-amber-100 text-amber-800 text-[11px] font-medium px-2 py-0.5 rounded">Xuất NVL làm hàng</span>
+        <?php if (!$pendingExports): ?>
+            <div class="rounded-lg border border-slate-200 p-4 text-sm text-slate-500">Không có phiếu đang chờ xử lý.</div>
+        <?php else: ?>
+            <?php foreach ($pendingExports as $export): ?>
+                <?php $isMaterialExport = $export['loai'] === 'NVL'; ?>
+                <div class="border <?= $isMaterialExport ? 'border-amber-200' : 'border-blue-200' ?> rounded-lg p-4 flex justify-between items-center bg-white shadow-sm">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1.5">
+                            <span class="font-bold <?= $isMaterialExport ? 'text-amber-700' : 'text-blue-700' ?>"><?= htmlspecialchars($export['maPX'], ENT_QUOTES, 'UTF-8') ?></span>
+                            <span class="<?= $isMaterialExport ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800' ?> text-[11px] font-medium px-2 py-0.5 rounded">Xuất <?= $isMaterialExport ? 'nguyên vật liệu' : 'thành phẩm' ?></span>
+                        </div>
+                        <div class="text-sm text-slate-700 mb-1">Số dòng chi tiết: <?= (int) $export['soDong'] ?></div>
+                        <div class="text-[11px] text-slate-400">Ngày tạo: <?= htmlspecialchars(dashboardDate((string) $export['ngayXuat']), ENT_QUOTES, 'UTF-8') ?> &bull; Người tạo: <?= htmlspecialchars($export['hoTen'], ENT_QUOTES, 'UTF-8') ?></div>
+                    </div>
+                    <a href="<?= $isMaterialExport ? 'export_materials.php' : 'export_products.php' ?>?maPX=<?= urlencode((string) $export['maPX']) ?>"
+                    class="<?= $isMaterialExport ? 'bg-[#e27a13] hover:bg-[#c96a0e]' : 'bg-blue-600 hover:bg-blue-700' ?> text-white text-sm font-medium px-4 py-2 rounded-lg transition shrink-0 shadow-sm">
+                        <?= $isManager ? 'Duyệt ngay' : 'Xem phiếu' ?>
+                    </a>
                 </div>
-                <div class="text-sm text-slate-700 mb-1">Mục đích: Xin cấp vật tư làm 50 bàn chữ U (YC-2026-001)</div>
-                <div class="text-[11px] text-slate-400">Ngày tạo: 2026-09-16 11:20:00 &bull; Người tạo: NV02</div>
-            </div>
-            <button class="bg-[#e27a13] hover:bg-[#c96a0e] text-white text-sm font-medium px-4 py-2 rounded-lg transition shrink-0 shadow-sm"
-            onclick="window.location.href='export_materials.php'">
-                Duyệt ngay
-            </button>
-        </div>
-
-        <!-- Card 2: PXTP -->
-        <div class="border border-blue-200 rounded-lg p-4 flex justify-between items-center bg-white shadow-sm">
-            <div>
-                <div class="flex items-center gap-2 mb-1.5">
-                    <span class="font-bold text-blue-700">PXTP-002</span>
-                    <span class="bg-blue-100 text-blue-800 text-[11px] font-medium px-2 py-0.5 rounded">Xuất bán thành phẩm</span>
-                </div>
-                <div class="text-sm text-slate-700 mb-1">Khách hàng: Tập đoàn Bất Động Sản Hưng Vượng - Đơn #9945</div>
-                <div class="text-[11px] text-slate-400">Ngày tạo: 2026-09-19 09:30:00 &bull; Người tạo: NV03</div>
-            </div>
-            <button class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition shrink-0 shadow-sm"
-            onclick="window.location.href='export_products.php'">
-                Duyệt ngay
-            </button>
-        </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
     </div>
 
     <!-- CỘT PHẢI: Lệnh Sản Xuất Hiện Có -->
     <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-4">
         <div class="flex justify-between items-center mb-1">
             <h3 class="font-bold text-slate-800 flex items-center gap-2">
-                <i class="fa-regular fa-clipboard text-indigo-500"></i> Lệnh Sản Xuất Hiện Có (YEUCAU)
+                <i class="fa-regular fa-clipboard text-indigo-500"></i> Lệnh Sản Xuất Hiện Có (<?= count($productionOrders) ?>)
             </h3>
             <a href="production_orders.php" class="text-sm text-indigo-600 hover:underline">Xem tất cả &rarr;</a>
         </div>
 
-        <!-- Card Lệnh 1 -->
-        <div class="border border-slate-200 rounded-lg p-4 flex justify-between items-center bg-white shadow-sm">
-            <div>
-                <div class="flex items-center gap-2 mb-1.5">
-                    <span class="font-bold text-slate-800">YC-2026-001</span>
-                    <span class="bg-indigo-100 text-indigo-700 text-[11px] font-medium px-2 py-0.5 rounded">Đang sản xuất</span>
+        <?php if (!$productionOrders): ?>
+            <div class="rounded-lg border border-slate-200 p-4 text-sm text-slate-500">Chưa có lệnh sản xuất.</div>
+        <?php else: ?>
+            <?php foreach ($productionOrders as $order): ?>
+                <div class="border border-slate-200 rounded-lg p-4 flex justify-between items-center bg-white shadow-sm">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1.5">
+                            <span class="font-bold text-slate-800"><?= htmlspecialchars($order['maYC'], ENT_QUOTES, 'UTF-8') ?></span>
+                            <span class="bg-indigo-100 text-indigo-700 text-[11px] font-medium px-2 py-0.5 rounded">Đã tạo</span>
+                        </div>
+                        <div class="text-sm text-slate-700 mb-1"><?= htmlspecialchars($order['sanPham'] ?: 'Chưa có sản phẩm chi tiết', ENT_QUOTES, 'UTF-8') ?></div>
+                        <div class="text-[11px] text-slate-400">Ngày tạo: <?= htmlspecialchars(dashboardDate((string) $order['ngayYC']), ENT_QUOTES, 'UTF-8') ?> &bull; Người yêu cầu: <?= htmlspecialchars($order['hoTen'], ENT_QUOTES, 'UTF-8') ?></div>
+                    </div>
+                    <button class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium px-4 py-2 rounded-lg transition shrink-0 border border-slate-200"
+                    onclick="window.location.href='production_orders.php'">
+                        Kiểm tra NVL
+                    </button>
                 </div>
-                <div class="text-sm text-slate-700 mb-1">Sản xuất phục vụ hợp đồng văn phòng FPT Software</div>
-                <div class="text-[11px] text-slate-400">Hạn chót: 2026-09-25 &bull; Quản lý yêu cầu: NV01</div>
-            </div>
-            <button class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium px-4 py-2 rounded-lg transition shrink-0 border border-slate-200"
-            onclick="window.location.href='production_orders.php'">
-                Kiểm tra NVL
-            </button>
-        </div>
-
-        <!-- Card Lệnh 2 -->
-        <div class="border border-slate-200 rounded-lg p-4 flex justify-between items-center bg-white shadow-sm">
-            <div>
-                <div class="flex items-center gap-2 mb-1.5">
-                    <span class="font-bold text-slate-800">YC-2026-002</span>
-                    <span class="bg-amber-100 text-amber-700 text-[11px] font-medium px-2 py-0.5 rounded">Chờ xử lý</span>
-                </div>
-                <div class="text-sm text-slate-700 mb-1">Đơn đặt hàng showroom Tân Bình</div>
-                <div class="text-[11px] text-slate-400">Hạn chót: 2026-09-30 &bull; Quản lý yêu cầu: NV04</div>
-            </div>
-            <button class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium px-4 py-2 rounded-lg transition shrink-0 border border-slate-200"
-            onclick="window.location.href='production_orders.php'">
-                Kiểm tra NVL
-            </button>
-        </div>
-
-        <!-- Card Lệnh 3 -->
-        <div class="border border-slate-200 rounded-lg p-4 flex justify-between items-center bg-white shadow-sm">
-            <div>
-                <div class="flex items-center gap-2 mb-1.5">
-                    <span class="font-bold text-slate-800">YC-2026-003</span>
-                    <span class="bg-emerald-100 text-emerald-700 text-[11px] font-medium px-2 py-0.5 rounded">Đã hoàn thành</span>
-                </div>
-                <div class="text-sm text-slate-700 mb-1">Lô ghế xoay dự trữ đợt 1</div>
-                <div class="text-[11px] text-slate-400">Hạn chót: 2026-09-12 &bull; Quản lý yêu cầu: NV01</div>
-            </div>
-            <button class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium px-4 py-2 rounded-lg transition shrink-0 border border-slate-200"
-            onclick="window.location.href='production_orders.php'">
-                Kiểm tra NVL
-            </button>
-        </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
     </div>
 </div>
 
