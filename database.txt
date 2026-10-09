@@ -105,9 +105,18 @@ CREATE TABLE IF NOT EXISTS PHIEUNHAPKHO (
     maPN VARCHAR(20) PRIMARY KEY,
     ngayNhap DATETIME NOT NULL,
     maNV VARCHAR(10) NOT NULL,
+    trangThai TINYINT NOT NULL DEFAULT 0,
+    maQL VARCHAR(10) NULL,
+    ngayDuyet DATETIME NULL,
+    ghiChu VARCHAR(255) NULL,
 
     CONSTRAINT fk_pn_nv
         FOREIGN KEY (maNV)
+        REFERENCES NHANVIEN(maNV)
+        ON UPDATE CASCADE,
+
+    CONSTRAINT fk_pn_ql
+        FOREIGN KEY (maQL)
         REFERENCES NHANVIEN(maNV)
         ON UPDATE CASCADE
 ) ENGINE=InnoDB;
@@ -146,7 +155,9 @@ CREATE TABLE IF NOT EXISTS PHIEUXUATNVL (
     ngayXuat DATETIME NOT NULL,
     trangThai BOOLEAN NOT NULL DEFAULT 0,
     maNV VARCHAR(10) NOT NULL,
-    maQL VARCHAR(10) NOT NULL,
+    maQL VARCHAR(10) NULL,
+    ngayDuyet DATETIME NULL,
+    ghiChu VARCHAR(255) NULL,
     loaiPhieu BOOLEAN NOT NULL DEFAULT 0,
 
     CONSTRAINT fk_pxnvl_nv
@@ -465,16 +476,14 @@ INSERT INTO CHITIETTHANHPHAM
 ('TP011', 'NVL025', 6);
 
 -- ==========================================================
--- 19. PHIẾU NHẬP KHO
+-- 19. PHIẾU NHẬP KHO CHỜ DUYỆT
 -- ==========================================================
 
 INSERT INTO PHIEUNHAPKHO
-(maPN, ngayNhap, maNV) VALUES
+(maPN, ngayNhap, maNV, trangThai, maQL, ngayDuyet, ghiChu) VALUES
 
-('PN001', '2026-09-01 08:00:00', 'NV001'),
-('PN002', '2026-09-03 09:00:00', 'NV002'),
-('PN003', '2026-09-08 08:30:00', 'NV001'),
-('PN004', '2026-09-15 10:00:00', 'NV002');
+('PN001', '2026-10-09 08:00:00', 'NV001', 0, NULL, NULL,
+ 'Nhập bổ sung gỗ MDF và vít gỗ từ nhà cung cấp mẫu');
 
 
 -- ==========================================================
@@ -484,33 +493,8 @@ INSERT INTO PHIEUNHAPKHO
 INSERT INTO CHITIETPHIEUNHAP
 (maPN, maNVL, soLuong) VALUES
 
-('PN001', 'NVL001', 200),
-('PN001', 'NVL002', 150),
-('PN001', 'NVL003', 200),
-('PN001', 'NVL004', 150),
-('PN001', 'NVL005', 100),
-('PN001', 'NVL006', 150),
-
-('PN002', 'NVL007', 100),
-('PN002', 'NVL008', 120),
-('PN002', 'NVL009', 80),
-('PN002', 'NVL010', 100),
-('PN002', 'NVL011', 80),
-('PN002', 'NVL012', 70),
-
-('PN003', 'NVL013', 80),
-('PN003', 'NVL014', 50),
-('PN003', 'NVL015', 1000),
-('PN003', 'NVL016', 1000),
-('PN003', 'NVL017', 300),
-('PN003', 'NVL018', 250),
-
-('PN004', 'NVL019', 300),
-('PN004', 'NVL020', 200),
-('PN004', 'NVL021', 200),
-('PN004', 'NVL022', 150),
-('PN004', 'NVL023', 200),
-('PN004', 'NVL024', 100);
+('PN001', 'NVL001', 50),
+('PN001', 'NVL015', 200);
 
 
 -- ==========================================================
@@ -518,19 +502,19 @@ INSERT INTO CHITIETPHIEUNHAP
 -- ==========================================================
 
 INSERT INTO PHIEUXUATNVL
-(maPX, ngayXuat, trangThai, maNV, maQL, loaiPhieu) VALUES
+(maPX, ngayXuat, trangThai, maNV, maQL, ngayDuyet, ghiChu, loaiPhieu) VALUES
 
 ('PXN001', '2026-09-10 08:00:00', 1,
- 'NV001', 'QL001', 0),
+ 'NV001', 'QL001', '2026-09-10 10:00:00', 'Cấp vật tư cho lệnh sản xuất YC001', 0),
 
 ('PXN002', '2026-09-12 09:00:00', 1,
- 'NV002', 'QL002', 0),
+ 'NV002', 'QL002', '2026-09-12 11:00:00', 'Cấp vật tư cho lệnh sản xuất YC002', 0),
 
 ('PXN003', '2026-09-18 08:30:00', 0,
- 'NV001', 'QL002', 0),
+ 'NV001', NULL, NULL, 'Đề nghị cấp vật tư cho lệnh sản xuất YC003', 0),
 
 ('PXN004', '2026-09-20 10:00:00', 1,
- 'NV002', 'QL001', 0);
+ 'NV002', 'QL001', '2026-09-20 12:00:00', 'Cấp vật tư cho lệnh sản xuất YC004', 0);
 
 
 -- ==========================================================
