@@ -61,13 +61,11 @@ $navItemClass = static function (string $page) use ($currentPage): string {
                         <i class="fa-regular fa-clipboard text-indigo-400 w-5 text-center"></i> Lệnh sản xuất (Yêu cầu)
                     </a>
                 </li>
-                <?php if ($isManager): ?>
-                    <li>
-                        <a href="import_materials.php" class="<?= $navItemClass('import_materials.php') ?>" <?= $currentPage === 'import_materials.php' ? 'aria-current="page"' : '' ?>>
-                            <i class="fa-solid fa-box-open text-emerald-400 w-5 text-center"></i> Nhập kho NVL (Phiếu nhập)
-                        </a>
-                    </li>
-                <?php endif; ?>
+                <li>
+                    <a href="import_materials.php" class="<?= $navItemClass('import_materials.php') ?>" <?= $currentPage === 'import_materials.php' ? 'aria-current="page"' : '' ?>>
+                        <i class="fa-solid fa-box-open text-emerald-400 w-5 text-center"></i> <?= $isManager ? 'Duyệt nhập kho NVL' : 'Tạo phiếu nhập NVL' ?>
+                    </a>
+                </li>
                 <li>
                     <a href="export_materials.php" class="<?= $navItemClass('export_materials.php') ?>" <?= $currentPage === 'export_materials.php' ? 'aria-current="page"' : '' ?>>
                         <div class="flex items-center gap-3">
