@@ -30,7 +30,10 @@ try {
     $pdo->beginTransaction();
 
     $exportStatement = $pdo->prepare(
-        'SELECT maPX, trangThai FROM PHIEUXUATNVL WHERE maPX = :maPX FOR UPDATE'
+        'SELECT maPX, trangThai, loaiPhieu
+         FROM PHIEUXUATNVL
+         WHERE maPX = :maPX
+         FOR UPDATE'
     );
     $exportStatement->execute(['maPX' => $exportCode]);
     $export = $exportStatement->fetch();
@@ -66,14 +69,18 @@ try {
         }
     }
 
-    $updateStock = $pdo->prepare(
-        'UPDATE NGUYENVATLIEU SET soLuong = soLuong - :soLuong WHERE maNVL = :maNVL'
-    );
-    foreach ($details as $detail) {
-        $updateStock->execute([
-            'soLuong' => (int) $detail['soLuong'],
-            'maNVL' => $detail['maNVL'],
-        ]);
+    // Phiếu cấp vật tư cho lệnh sản xuất chỉ xác nhận việc cấp vật tư.
+    // Tồn kho sẽ được trừ một lần khi nhân viên hoàn thành lệnh.
+    if ((int) $export['loaiPhieu'] === 0) {
+        $updateStock = $pdo->prepare(
+            'UPDATE NGUYENVATLIEU SET soLuong = soLuong - :soLuong WHERE maNVL = :maNVL'
+        );
+        foreach ($details as $detail) {
+            $updateStock->execute([
+                'soLuong' => (int) $detail['soLuong'],
+                'maNVL' => $detail['maNVL'],
+            ]);
+        }
     }
 
     $updateExport = $pdo->prepare(

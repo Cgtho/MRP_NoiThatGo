@@ -222,7 +222,7 @@ try {
 
             $insertRequest = $pdo->prepare(
                 'INSERT INTO PHIEUXUATNVL (maPX, ngayXuat, trangThai, maNV, maQL, loaiPhieu)
-                 VALUES (:maPX, NOW(), 0, :maNV, :maQL, 0)'
+                 VALUES (:maPX, NOW(), 0, :maNV, :maQL, 1)'
             );
             $insertRequest->execute([
                 'maPX' => $materialRequestCode,

@@ -77,6 +77,39 @@ try {
         ]);
     }
 
+    $pendingOrdersStatement = $pdo->query(
+        'SELECT yc.maYC, bom.maNVL,
+                SUM(bom.soLuong * ct.soLuong) AS requiredAmount,
+                n.soLuong AS stockAmount
+         FROM YEUCAU yc
+         INNER JOIN CHITIETYEUCAU ct ON ct.maYC = yc.maYC
+         INNER JOIN CHITIETTHANHPHAM bom ON bom.maTP = ct.maTP
+         INNER JOIN NGUYENVATLIEU n ON n.maNVL = bom.maNVL
+         WHERE yc.trangThai = 0
+         GROUP BY yc.maYC, bom.maNVL, n.soLuong'
+    );
+    $pendingOrders = [];
+    foreach ($pendingOrdersStatement->fetchAll() as $materialRequirement) {
+        $orderCode = (string) $materialRequirement['maYC'];
+        if (!isset($pendingOrders[$orderCode])) {
+            $pendingOrders[$orderCode] = true;
+        }
+        if ((float) $materialRequirement['requiredAmount'] > (float) $materialRequirement['stockAmount']) {
+            $pendingOrders[$orderCode] = false;
+        }
+    }
+
+    $activateOrder = $pdo->prepare(
+        'UPDATE YEUCAU
+         SET trangThai = 1
+         WHERE maYC = :maYC AND trangThai = 0'
+    );
+    foreach ($pendingOrders as $orderCode => $hasEnoughMaterials) {
+        if ($hasEnoughMaterials) {
+            $activateOrder->execute(['maYC' => $orderCode]);
+        }
+    }
+
     $updateReceipt = $pdo->prepare(
         'UPDATE PHIEUNHAPKHO
          SET trangThai = 1, maQL = :maQL, ngayDuyet = NOW()
