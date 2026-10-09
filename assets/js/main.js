@@ -6,6 +6,22 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    const notificationButton = document.getElementById('notificationButton');
+    const notificationPanel = document.getElementById('notificationPanel');
+    if (notificationButton && notificationPanel) {
+        notificationButton.addEventListener('click', () => {
+            const isHidden = notificationPanel.classList.toggle('hidden');
+            notificationButton.setAttribute('aria-expanded', String(!isHidden));
+        });
+
+        document.addEventListener('click', (event) => {
+            if (!notificationPanel.contains(event.target) && !notificationButton.contains(event.target)) {
+                notificationPanel.classList.add('hidden');
+                notificationButton.setAttribute('aria-expanded', 'false');
+            }
+        });
+    }
+
     // 1. Logic chuyển đổi tài khoản (Demo nhanh bằng cách gọi ajax set session)
     const roleButtons = document.querySelectorAll('.switch-role');
     roleButtons.forEach(btn => {
@@ -23,5 +39,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // 2. Fake Fetch số lượng phiếu chờ duyệt
     // Trong thực tế: fetch('ajax/ajax_get_pending.php')...
-    document.getElementById('badge-pending-export').innerText = "3"; 
+    const pendingExportBadge = document.getElementById('badge-pending-export');
+    if (pendingExportBadge) {
+        pendingExportBadge.innerText = "3";
+    }
 });

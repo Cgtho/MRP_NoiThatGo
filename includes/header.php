@@ -43,10 +43,39 @@ $roleIcon = $isManager ? 'fa-crown' : 'fa-user';
         </div>
     </div>
     
-    <div class="flex items-center gap-4">        
-        <div class="relative cursor-pointer">
-            <i class="fa-regular fa-bell text-xl text-slate-300 hover:text-white"></i>
-            <span class="absolute -top-1 -right-1 bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">2</span>
+    <div class="flex items-center gap-4">
+        <div class="relative">
+            <button id="notificationButton" type="button" class="relative flex h-9 w-9 items-center justify-center rounded-md text-slate-300 transition hover:bg-slate-800 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-400" aria-label="Mở thông báo" aria-expanded="false" aria-controls="notificationPanel">
+                <i class="fa-regular fa-bell text-xl"></i>
+                <span class="absolute -right-0.5 -top-0.5 min-w-4 rounded-full bg-amber-500 px-1 py-0.5 text-center text-[10px] font-bold leading-none text-white">2</span>
+            </button>
+            <div id="notificationPanel" class="absolute right-0 top-11 z-50 hidden w-80 overflow-hidden rounded-lg border border-slate-200 bg-white text-slate-700 shadow-xl" role="dialog" aria-label="Thông báo">
+                <div class="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+                    <h2 class="font-semibold text-slate-800">Thông báo</h2>
+                    <span class="rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-700">2 mới</span>
+                </div>
+                <div class="divide-y divide-slate-100">
+                    <?php if ($isManager): ?>
+                        <a href="export_materials.php" class="flex gap-3 px-4 py-3 transition hover:bg-slate-50">
+                            <i class="fa-solid fa-dolly mt-0.5 text-amber-500"></i>
+                            <span><strong class="block text-sm">Phiếu xuất NVL chờ duyệt</strong><small class="text-xs text-slate-500">Có 1 phiếu cần xử lý</small></span>
+                        </a>
+                        <a href="import_materials.php" class="flex gap-3 px-4 py-3 transition hover:bg-slate-50">
+                            <i class="fa-solid fa-box-open mt-0.5 text-emerald-500"></i>
+                            <span><strong class="block text-sm">Phiếu nhập kho chờ duyệt</strong><small class="text-xs text-slate-500">Có 1 phiếu cần xử lý</small></span>
+                        </a>
+                    <?php else: ?>
+                        <a href="export_materials.php" class="flex gap-3 px-4 py-3 transition hover:bg-slate-50">
+                            <i class="fa-solid fa-dolly mt-0.5 text-amber-500"></i>
+                            <span><strong class="block text-sm">Trạng thái phiếu xuất NVL</strong><small class="text-xs text-slate-500">Mở danh sách phiếu của bạn</small></span>
+                        </a>
+                        <a href="import_materials.php" class="flex gap-3 px-4 py-3 transition hover:bg-slate-50">
+                            <i class="fa-solid fa-box-open mt-0.5 text-emerald-500"></i>
+                            <span><strong class="block text-sm">Trạng thái phiếu nhập kho</strong><small class="text-xs text-slate-500">Mở danh sách phiếu của bạn</small></span>
+                        </a>
+                    <?php endif; ?>
+                </div>
+            </div>
         </div>
         
         <div class="flex items-center gap-2 ml-2">
