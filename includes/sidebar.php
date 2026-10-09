@@ -83,7 +83,7 @@ $navItemClass = static function (string $page) use ($currentPage): string {
                     <a href="export_products.php" class="<?= $navItemClass('export_products.php') ?>" <?= $currentPage === 'export_products.php' ? 'aria-current="page"' : '' ?>>
                         <div class="flex items-center gap-3">
                             <i class="fa-solid fa-truck-fast text-emerald-500 w-5 text-center"></i>
-                            <?= $isManager ? 'Phê duyệt xuất Thành phẩm' : 'Tạo phiếu xuất Thành phẩm' ?>
+                            <?= $isManager ? 'Phê duyệt phiếu xuất thành phẩm' : 'Tạo phiếu xuất thành phẩm' ?>
                         </div>
                         <?php if ($isManager): ?>
                             <span class="bg-amber-500 text-white text-[10px] px-1.5 py-0.5 rounded">1</span>
