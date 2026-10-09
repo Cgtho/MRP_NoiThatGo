@@ -243,7 +243,7 @@ $statusClass = $selectedExport !== null && (int) $selectedExport['trangThai'] ==
 </div>
 
 <div class="flex gap-6 items-start">
-    <div class="w-1/3 shrink-0 space-y-3">
+    <div class="w-1/3 shrink-0 max-h-[520px] space-y-3 overflow-y-auto pr-2 scrollbar-custom">
         <?php if ($exportRows === []): ?>
             <div class="bg-white border border-slate-200 rounded-xl p-5 text-sm text-slate-500">Không có phiếu xuất thành phẩm nào trong trạng thái này.</div>
         <?php else: ?>

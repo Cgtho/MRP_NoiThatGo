@@ -18,16 +18,10 @@ require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../includes/csrf.php';
 csrf_require_json();
 
-$maTP = strtoupper(trim((string) ($_POST['maTP'] ?? '')));
 $tenTP = trim((string) ($_POST['tenTP'] ?? ''));
 $donViTinh = trim((string) ($_POST['donViTinh'] ?? ''));
 $materials = $_POST['materials'] ?? [];
 
-if (!preg_match('/^[A-Z0-9]{2,10}$/', $maTP)) {
-    http_response_code(422);
-    echo json_encode(['success' => false, 'message' => 'Mã thành phẩm gồm 2 đến 10 ký tự chữ hoặc số.']);
-    exit;
-}
 if ($tenTP === '' || mb_strlen($tenTP) > 100 || $donViTinh === '' || !is_array($materials) || count($materials) === 0) {
     http_response_code(422);
     echo json_encode(['success' => false, 'message' => 'Vui lòng nhập đủ thông tin thành phẩm và ít nhất một vật tư.']);
@@ -57,14 +51,6 @@ try {
         exit;
     }
 
-    $productCheck = $pdo->prepare('SELECT maTP FROM THANHPHAM WHERE maTP = :maTP LIMIT 1');
-    $productCheck->execute(['maTP' => $maTP]);
-    if ($productCheck->fetch()) {
-        http_response_code(409);
-        echo json_encode(['success' => false, 'message' => 'Mã thành phẩm này đã tồn tại.']);
-        exit;
-    }
-
     $materialCheck = $pdo->prepare('SELECT maNVL FROM NGUYENVATLIEU WHERE maNVL = :maNVL LIMIT 1');
     $insertBom = $pdo->prepare(
         'INSERT INTO CHITIETTHANHPHAM (maTP, maNVL, soLuong)
@@ -72,6 +58,12 @@ try {
     );
 
     $pdo->beginTransaction();
+    $nextProductNumber = (int) $pdo->query(
+        "SELECT COALESCE(MAX(CAST(SUBSTRING(maTP, 3) AS UNSIGNED)), 0) + 1
+         FROM THANHPHAM
+         WHERE maTP REGEXP '^TP[0-9]+$'"
+    )->fetchColumn();
+    $maTP = 'TP' . str_pad((string) $nextProductNumber, 3, '0', STR_PAD_LEFT);
     $insertProduct = $pdo->prepare(
         'INSERT INTO THANHPHAM (maTP, tenTP, donViTinh, soLuong)
          VALUES (:maTP, :tenTP, :donViTinh, 0)'

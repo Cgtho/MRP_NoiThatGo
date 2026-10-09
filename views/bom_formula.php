@@ -8,6 +8,7 @@ $products = [];
 $materials = [];
 $units = [];
 $productError = null;
+$nextProductCode = 'TP001';
 
 try {
     $stmt = $pdo->query(
@@ -26,6 +27,12 @@ try {
          ORDER BY nvl.tenNVL ASC'
     )->fetchAll();
     $units = $pdo->query('SELECT maDVT, tenDVT FROM DONVITINH ORDER BY tenDVT ASC')->fetchAll();
+    $nextProductNumber = (int) $pdo->query(
+        "SELECT COALESCE(MAX(CAST(SUBSTRING(maTP, 3) AS UNSIGNED)), 0) + 1
+         FROM THANHPHAM
+         WHERE maTP REGEXP '^TP[0-9]+$'"
+    )->fetchColumn();
+    $nextProductCode = 'TP' . str_pad((string) $nextProductNumber, 3, '0', STR_PAD_LEFT);
 } catch (PDOException $e) {
     $productError = 'Không thể tải danh sách thành phẩm từ cơ sở dữ liệu.';
 }
@@ -129,10 +136,14 @@ try {
             </div>
             <form id="addProductForm" action="../ajax/add_bom_product.php" method="post" class="pt-5">
                 <?= csrf_field() ?>
-                <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label for="productCode" class="mb-1 block text-sm font-medium text-slate-700">Mã thành phẩm (tự động)</label>
+                    <input id="productCode" type="text" value="<?= htmlspecialchars($nextProductCode, ENT_QUOTES, 'UTF-8') ?>" readonly class="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-500">
+                </div>
+                <div class="mt-4 grid grid-cols-[minmax(0,2fr)_minmax(150px,1fr)] gap-4">
                     <div>
-                        <label for="productCode" class="mb-1 block text-sm font-medium text-slate-700">Mã thành phẩm</label>
-                        <input id="productCode" name="maTP" type="text" maxlength="10" required placeholder="Ví dụ: TP04" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm uppercase outline-none focus:border-blue-500">
+                        <label for="productName" class="mb-1 block text-sm font-medium text-slate-700">Tên thành phẩm</label>
+                        <input id="productName" name="tenTP" type="text" maxlength="100" required placeholder="Ví dụ: Bàn máy tính gaming chữ K" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500">
                     </div>
                     <div>
                         <label for="productUnit" class="mb-1 block text-sm font-medium text-slate-700">Đơn vị tính</label>
@@ -143,10 +154,6 @@ try {
                             <?php endforeach; ?>
                         </select>
                     </div>
-                </div>
-                <div class="mt-4">
-                    <label for="productName" class="mb-1 block text-sm font-medium text-slate-700">Tên thành phẩm</label>
-                    <input id="productName" name="tenTP" type="text" maxlength="100" required placeholder="Ví dụ: Bàn máy tính gaming chữ K" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500">
                 </div>
                 <div class="mt-5">
                     <div class="mb-2 flex items-center justify-between">

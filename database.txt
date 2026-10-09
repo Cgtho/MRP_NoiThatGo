@@ -194,7 +194,7 @@ CREATE TABLE IF NOT EXISTS PHIEUXUATTP (
     ngayXuat DATETIME NOT NULL,
     trangThai BOOLEAN NOT NULL DEFAULT 0,
     maNV VARCHAR(10) NOT NULL,
-    maQL VARCHAR(10) NOT NULL,
+    maQL VARCHAR(10),
     loaiPhieu BOOLEAN NOT NULL DEFAULT 1,
 
     CONSTRAINT fk_pxtp_nv
@@ -235,12 +235,17 @@ CREATE TABLE IF NOT EXISTS CHITIETPHIEUXUATTP (
 -- ==========================================================
 -- 12. BẢNG YEUCAU
 -- Lệnh sản xuất từ quản lý
+-- trangThai:
+-- 0 = Chờ xử lý (chưa đủ nguyên vật liệu)
+-- 1 = Đang làm (đã đủ nguyên vật liệu)
+-- 2 = Đã hoàn thành
 -- ==========================================================
 
 CREATE TABLE IF NOT EXISTS YEUCAU (
     maYC VARCHAR(20) PRIMARY KEY,
     ngayYC DATETIME NOT NULL,
     maNV VARCHAR(10) NOT NULL,
+    trangThai TINYINT NOT NULL DEFAULT 0,
 
     CONSTRAINT fk_yc_nv
         FOREIGN KEY (maNV)
@@ -344,7 +349,8 @@ INSERT INTO NGUYENVATLIEU
 ('NVL021', 'Chân ghế',           3, 500),
 ('NVL022', 'Đệm mút',            5, 300),
 ('NVL023', 'Vải bọc ghế',        4, 400),
-('NVL024', 'Kính cường lực',     5, 200);
+('NVL024', 'Kính cường lực',     5, 200),
+('NVL025', 'Ốc lục giác',        3, 0);
 
 
 -- ==========================================================
@@ -363,7 +369,8 @@ INSERT INTO THANHPHAM
 ('TP007', 'Kệ sách gỗ',         'Cái', 25),
 ('TP008', 'Kệ tivi gỗ',         'Cái', 20),
 ('TP009', 'Giường ngủ gỗ',      'Cái', 15),
-('TP010', 'Bàn trang điểm gỗ',  'Cái', 15);
+('TP010', 'Bàn trang điểm gỗ',  'Cái', 15),
+('TP011', 'Ván lót gỗ',         'Cái', 0);
 
 
 -- ==========================================================
@@ -451,6 +458,11 @@ INSERT INTO CHITIETTHANHPHAM
 ('TP010', 'NVL018', 2),
 ('TP010', 'NVL019', 2);
 
+-- Ván lót gỗ
+INSERT INTO CHITIETTHANHPHAM
+(maTP, maNVL, soLuong) VALUES
+('TP011', 'NVL001', 2),
+('TP011', 'NVL025', 6);
 
 -- ==========================================================
 -- 19. PHIẾU NHẬP KHO
@@ -567,7 +579,7 @@ INSERT INTO PHIEUXUATTP
  'NV002', 'QL002', 1),
 
 ('PXT003', '2026-09-21 09:00:00', 0,
- 'NV001', 'QL001', 1);
+ 'NV001', NULL, 1);
 
 
 -- ==========================================================
@@ -595,12 +607,12 @@ INSERT INTO CHITIETPHIEUXUATTP
 -- ==========================================================
 
 INSERT INTO YEUCAU
-(maYC, ngayYC, maNV) VALUES
+(maYC, ngayYC, maNV, trangThai) VALUES
 
-('YC001', '2026-09-05 08:00:00', 'QL001'),
-('YC002', '2026-09-09 09:00:00', 'QL002'),
-('YC003', '2026-09-14 10:00:00', 'QL001'),
-('YC004', '2026-09-19 08:30:00', 'QL002');
+('YC001', '2026-09-05 08:00:00', 'QL001', 1),
+('YC002', '2026-09-09 09:00:00', 'QL002', 1),
+('YC003', '2026-09-14 10:00:00', 'QL001', 2),
+('YC004', '2026-09-19 08:30:00', 'QL002', 2);
 
 
 -- ==========================================================
