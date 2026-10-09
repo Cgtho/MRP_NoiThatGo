@@ -85,7 +85,7 @@ if (isset($_SESSION['current_user'])) {
                         <label for="employeeId" class="mb-2 block text-sm font-semibold text-[#263940]">Mã nhân viên</label>
                         <div class="field flex items-center gap-3 rounded-xl border border-[#d9d7ce] bg-white px-4 transition-all">
                             <i class="fa-regular fa-id-card text-[#879397]"></i>
-                            <input id="employeeId" name="employeeId" type="text" autocomplete="username" placeholder="Ví dụ: NV01" class="h-12 min-w-0 flex-1 bg-transparent text-sm text-[#16252b] outline-none placeholder:text-[#a6abad]" required>
+                            <input id="employeeId" name="employeeId" type="text" autocomplete="username" class="h-12 min-w-0 flex-1 bg-transparent text-sm text-[#16252b] outline-none placeholder:text-[#a6abad]" required>
                         </div>
                         <p id="employeeError" class="mt-1.5 hidden text-xs text-red-600">Vui lòng nhập mã nhân viên.</p>
                     </div>
