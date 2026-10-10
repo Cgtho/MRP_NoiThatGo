@@ -22,7 +22,7 @@ csrf_require_json();
 $maNV = strtoupper(trim((string) ($_POST['maNV'] ?? '')));
 $hoTen = trim((string) ($_POST['hoTen'] ?? ''));
 $vaiTro = (string) ($_POST['vaiTro'] ?? '');
-$trangThai = (string) ($_POST['trangThai'] ?? '2');
+$trangThai = (string) ($_POST['trangThai'] ?? '1');
 $sdt = trim((string) ($_POST['sdt'] ?? ''));
 $diaChi = trim((string) ($_POST['diaChi'] ?? ''));
 $matKhau = (string) ($_POST['matKhau'] ?? '');
@@ -45,7 +45,7 @@ if (!in_array($vaiTro, ['0', '1'], true)) {
     exit;
 }
 
-if (!in_array($trangThai, ['0', '1', '2'], true)) {
+if (!in_array($trangThai, ['0', '1'], true)) {
     http_response_code(422);
     echo json_encode(['success' => false, 'message' => 'Trạng thái không hợp lệ.']);
     exit;
@@ -94,6 +94,13 @@ try {
     if ($isSelf && $vaiTro !== '0') {
         http_response_code(422);
         echo json_encode(['success' => false, 'message' => 'Bạn không thể tự hạ cấp vai trò của chính mình.']);
+        exit;
+    }
+
+    // Không cho phép tự khóa tài khoản của chính mình.
+    if ($isSelf && $trangThai === '0') {
+        http_response_code(422);
+        echo json_encode(['success' => false, 'message' => 'Bạn không thể tự khóa tài khoản của chính mình.']);
         exit;
     }
 

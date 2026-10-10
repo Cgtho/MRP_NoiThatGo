@@ -14,13 +14,13 @@ $requestedRole = $_GET['role'] ?? 'all';
 $roleFilter = in_array($requestedRole, ['all', 'manager', 'staff'], true) ? $requestedRole : 'all';
 
 $requestedStatus = $_GET['status'] ?? 'all';
-$statusFilter = in_array($requestedStatus, ['all', 'active', 'leave', 'resigned'], true) ? $requestedStatus : 'all';
+$statusFilter = in_array($requestedStatus, ['all', 'active', 'locked'], true) ? $requestedStatus : 'all';
 
 $perPage = 10;
 $page = max(1, (int) ($_GET['page'] ?? 1));
 
 $employees = [];
-$stats = ['total' => 0, 'managers' => 0, 'staff' => 0, 'active' => 0, 'onLeave' => 0, 'resigned' => 0];
+$stats = ['total' => 0, 'managers' => 0, 'staff' => 0, 'active' => 0, 'locked' => 0];
 $employeesError = null;
 $filteredTotal = 0;
 $totalPages = 1;
@@ -30,9 +30,8 @@ try {
         'SELECT COUNT(*) AS total,
                 COALESCE(SUM(vaiTro = 0), 0) AS managers,
                 COALESCE(SUM(vaiTro = 1), 0) AS staff,
-                COALESCE(SUM(trangThai = 2), 0) AS active,
-                COALESCE(SUM(trangThai = 1), 0) AS onLeave,
-                COALESCE(SUM(trangThai = 0), 0) AS resigned
+                COALESCE(SUM(trangThai = 1), 0) AS active,
+                COALESCE(SUM(trangThai = 0), 0) AS locked
          FROM NHANVIEN'
     )->fetch() ?: [];
     $stats = [
@@ -40,8 +39,7 @@ try {
         'managers' => (int) ($statsRow['managers'] ?? 0),
         'staff' => (int) ($statsRow['staff'] ?? 0),
         'active' => (int) ($statsRow['active'] ?? 0),
-        'onLeave' => (int) ($statsRow['onLeave'] ?? 0),
-        'resigned' => (int) ($statsRow['resigned'] ?? 0),
+        'locked' => (int) ($statsRow['locked'] ?? 0),
     ];
 
     $conditions = [];
@@ -60,10 +58,8 @@ try {
     }
 
     if ($statusFilter === 'active') {
-        $conditions[] = 'trangThai = 2';
-    } elseif ($statusFilter === 'leave') {
         $conditions[] = 'trangThai = 1';
-    } elseif ($statusFilter === 'resigned') {
+    } elseif ($statusFilter === 'locked') {
         $conditions[] = 'trangThai = 0';
     }
 
@@ -98,9 +94,8 @@ $currentUser = (string) ($_SESSION['current_user'] ?? '');
 
 // Nhãn và màu hiển thị tương ứng với từng trạng thái nhân viên.
 $statusMeta = [
-    2 => ['label' => 'Hoạt động', 'icon' => 'fa-circle-check', 'class' => 'bg-emerald-50 text-emerald-600 border-emerald-200'],
-    1 => ['label' => 'Xin nghỉ phép', 'icon' => 'fa-clock', 'class' => 'bg-amber-50 text-amber-600 border-amber-200'],
-    0 => ['label' => 'Đã nghỉ việc', 'icon' => 'fa-circle-xmark', 'class' => 'bg-rose-50 text-rose-600 border-rose-200'],
+    1 => ['label' => 'Hoạt động', 'icon' => 'fa-circle-check', 'class' => 'bg-emerald-50 text-emerald-600 border-emerald-200'],
+    0 => ['label' => 'Đã khóa', 'icon' => 'fa-lock', 'class' => 'bg-rose-50 text-rose-600 border-rose-200'],
 ];
 $searchPlaceholder = 'Tìm theo mã hoặc tên nhân viên...';
 
@@ -197,8 +192,7 @@ $endPage = min($totalPages, $page + 2);
         <select name="status" onchange="this.form.submit()" aria-label="Lọc theo trạng thái" class="text-sm text-slate-600 border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500 shadow-sm bg-white">
             <option value="all" <?= $statusFilter === 'all' ? 'selected' : '' ?>>Tất cả trạng thái</option>
             <option value="active" <?= $statusFilter === 'active' ? 'selected' : '' ?>>Hoạt động</option>
-            <option value="leave" <?= $statusFilter === 'leave' ? 'selected' : '' ?>>Xin nghỉ phép</option>
-            <option value="resigned" <?= $statusFilter === 'resigned' ? 'selected' : '' ?>>Đã nghỉ việc</option>
+            <option value="locked" <?= $statusFilter === 'locked' ? 'selected' : '' ?>>Đã khóa</option>
         </select>
         <div class="relative w-64">
             <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-sm"></i>
@@ -235,7 +229,7 @@ $endPage = min($totalPages, $page + 2);
                     <?php foreach ($employees as $employee): ?>
                         <?php
                             $empRole = (int) $employee['vaiTro'];
-                            $empStatus = (int) ($employee['trangThai'] ?? 2);
+                            $empStatus = (int) ($employee['trangThai'] ?? 1);
                             $isSelf = strcasecmp($employee['maNV'], $currentUser) === 0;
                             // Quản lý kho không được chỉnh sửa thông tin của quản lý kho khác.
                             $isOtherManager = $empRole === 0 && !$isSelf;
@@ -256,7 +250,7 @@ $endPage = min($totalPages, $page + 2);
                                 <?php endif; ?>
                             </td>
                             <td class="px-4 py-3 text-center">
-                                <?php $empStatusMeta = $statusMeta[$empStatus] ?? $statusMeta[2]; ?>
+                                <?php $empStatusMeta = $statusMeta[$empStatus] ?? $statusMeta[1]; ?>
                                 <span class="<?= $empStatusMeta['class'] ?> border text-[10px] px-2 py-1 rounded-full font-medium"><i class="fa-solid <?= $empStatusMeta['icon'] ?> mr-1"></i> <?= htmlspecialchars($empStatusMeta['label'], ENT_QUOTES, 'UTF-8') ?></span>
                             </td>
                             <td class="px-4 py-3 text-slate-600"><?= htmlspecialchars($employee['sdt'], ENT_QUOTES, 'UTF-8') ?></td>
@@ -358,9 +352,8 @@ $endPage = min($totalPages, $page + 2);
                 <div>
                     <label for="addTrangThai" class="mb-1.5 block text-sm font-medium text-slate-700">Trạng thái <span class="text-rose-500">*</span></label>
                     <select id="addTrangThai" name="trangThai" required class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
-                        <option value="2">Hoạt động</option>
-                        <option value="1">Xin nghỉ phép</option>
-                        <option value="0">Đã nghỉ việc</option>
+                        <option value="1">Hoạt động</option>
+                        <option value="0">Đã khóa</option>
                     </select>
                 </div>
                 <div class="col-span-2">
@@ -415,10 +408,10 @@ $endPage = min($totalPages, $page + 2);
                 <div>
                     <label for="editTrangThai" class="mb-1.5 block text-sm font-medium text-slate-700">Trạng thái <span class="text-rose-500">*</span></label>
                     <select id="editTrangThai" name="trangThai" required class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
-                        <option value="2">Hoạt động</option>
-                        <option value="1">Xin nghỉ phép</option>
-                        <option value="0">Đã nghỉ việc</option>
+                        <option value="1">Hoạt động</option>
+                        <option value="0" id="editTrangThaiLockedOption">Đã khóa</option>
                     </select>
+                    <p id="editTrangThaiNote" class="mt-1 hidden text-[11px] text-amber-600">Bạn không thể tự khóa tài khoản của chính mình.</p>
                 </div>
                 <div class="col-span-2">
                     <label for="editHoTen" class="mb-1.5 block text-sm font-medium text-slate-700">Họ tên <span class="text-rose-500">*</span></label>
@@ -542,13 +535,15 @@ $endPage = min($totalPages, $page + 2);
         const editVaiTro = document.getElementById('editVaiTro');
         const editVaiTroStaffOption = editVaiTro.querySelector('option[value="1"]');
         const editVaiTroNote = document.getElementById('editVaiTroNote');
+        const editTrangThaiLockedOption = document.getElementById('editTrangThaiLockedOption');
+        const editTrangThaiNote = document.getElementById('editTrangThaiNote');
 
         document.querySelectorAll('.edit-employee').forEach((button) => {
             button.addEventListener('click', () => {
                 const isSelf = button.dataset.self === '1';
                 document.getElementById('editMaNV').value = button.dataset.manv || '';
                 document.getElementById('editHoTen').value = button.dataset.hotenn || '';
-                document.getElementById('editTrangThai').value = button.dataset.trangthai || '2';
+                document.getElementById('editTrangThai').value = button.dataset.trangthai || '1';
                 document.getElementById('editSdt').value = button.dataset.sdt || '';
                 document.getElementById('editDiaChi').value = button.dataset.diachi || '';
                 document.getElementById('editMatKhau').value = '';
@@ -558,10 +553,17 @@ $endPage = min($totalPages, $page + 2);
                     editVaiTro.value = '0';
                     editVaiTroStaffOption.disabled = true;
                     editVaiTroNote.classList.remove('hidden');
+
+                    // Không cho phép tự khóa tài khoản: ẩn lựa chọn "Đã khóa" khi sửa chính mình.
+                    editTrangThaiLockedOption.hidden = true;
+                    editTrangThaiNote.classList.remove('hidden');
                 } else {
                     editVaiTro.value = button.dataset.vaitro || '1';
                     editVaiTroStaffOption.disabled = false;
                     editVaiTroNote.classList.add('hidden');
+
+                    editTrangThaiLockedOption.hidden = false;
+                    editTrangThaiNote.classList.add('hidden');
                 }
 
                 clearMessage(editMessage);

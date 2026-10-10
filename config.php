@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 $dbHost = getenv('DB_HOST') ?: '127.0.0.1';
-$dbName = getenv('DB_NAME') ?: 'quanlykho_sanxuat';
+$dbName = getenv('DB_NAME') ?: 'quanlykho_noithat';
 $dbUser = getenv('DB_USER') ?: 'root';
 $dbPassword = getenv('DB_PASSWORD') ?: '';
 

@@ -4,11 +4,13 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 require_once '../config.php';
+require_once '../includes/csrf.php';
 
 $isManager = (int) ($_SESSION['role'] ?? 1) === 0;
 $currentUser = (string) ($_SESSION['current_user'] ?? '');
 $statusFilter = $_GET['status'] ?? 'all';
-$statusFilter = in_array($statusFilter, ['all', 'pending', 'approved'], true) ? $statusFilter : 'all';
+$statusFilter = in_array($statusFilter, ['all', 'pending', 'approved', 'rejected'], true) ? $statusFilter : 'all';
+$searchQuery = trim((string) ($_GET['q'] ?? ''));
 $selectedCode = trim((string) ($_GET['maPX'] ?? ''));
 $errorMessage = null;
 $exportRows = [];
@@ -109,31 +111,45 @@ try {
         )->fetchAll();
     }
     $listStatement = $pdo->prepare(
-        'SELECT p.maPX, p.ngayXuat, p.trangThai, p.maNV, p.maQL,
+        'SELECT p.maPX, p.ngayXuat, p.trangThai, p.maNV, p.maQL, p.ngayDuyet, p.lyDoTuChoi,
                 nv.hoTen AS tenNV, ql.hoTen AS tenQL,
-                COUNT(ct.maTP) AS soMatHang
+                COUNT(ct.maTP) AS soMatHang, COALESCE(SUM(ct.soLuong), 0) AS tongSoLuong
          FROM PHIEUXUATTP p
          LEFT JOIN NHANVIEN nv ON nv.maNV = p.maNV
          LEFT JOIN NHANVIEN ql ON ql.maNV = p.maQL
          LEFT JOIN CHITIETPHIEUXUATTP ct ON ct.maPX = p.maPX
          WHERE ' . $visibilityColumn . ' = ' . $visibilityParam . '
-         GROUP BY p.maPX, p.ngayXuat, p.trangThai, p.maNV, p.maQL, nv.hoTen, ql.hoTen
+         GROUP BY p.maPX, p.ngayXuat, p.trangThai, p.maNV, p.maQL, p.ngayDuyet, p.lyDoTuChoi, nv.hoTen, ql.hoTen
          ORDER BY p.ngayXuat DESC, p.maPX DESC'
     );
     $listStatement->execute($isManager ? [] : ['maNV' => $currentUser]);
     $allExportRows = $listStatement->fetchAll();
+
+    if ($searchQuery !== '') {
+        $needle = function_exists('mb_strtolower') ? mb_strtolower($searchQuery, 'UTF-8') : strtolower($searchQuery);
+        $allExportRows = array_values(array_filter(
+            $allExportRows,
+            static function (array $row) use ($needle): bool {
+                $haystack = (string) $row['maPX'] . ' ' . (string) ($row['tenNV'] ?? '') . ' ' . (string) ($row['maNV'] ?? '');
+                $haystack = function_exists('mb_strtolower') ? mb_strtolower($haystack, 'UTF-8') : strtolower($haystack);
+                return strpos($haystack, $needle) !== false;
+            }
+        ));
+    }
+
     $exportRows = array_values(array_filter(
         $allExportRows,
         static function (array $row) use ($statusFilter): bool {
             return $statusFilter === 'all'
                 || ($statusFilter === 'pending' && (int) $row['trangThai'] === 0)
-                || ($statusFilter === 'approved' && (int) $row['trangThai'] === 1);
+                || ($statusFilter === 'approved' && (int) $row['trangThai'] === 1)
+                || ($statusFilter === 'rejected' && (int) $row['trangThai'] === 2);
         }
     ));
 
     if ($selectedCode !== '') {
         $detailStatement = $pdo->prepare(
-            'SELECT p.maPX, p.ngayXuat, p.trangThai, p.maNV, p.maQL,
+            'SELECT p.maPX, p.ngayXuat, p.trangThai, p.maNV, p.maQL, p.ngayDuyet, p.lyDoTuChoi,
                     nv.hoTen AS tenNV, ql.hoTen AS tenQL,
                     ct.maTP, ct.soLuong, tp.tenTP, tp.donViTinh, tp.soLuong AS tonKho
              FROM PHIEUXUATTP p
@@ -155,7 +171,7 @@ try {
     if ($selectedExport === null && $exportRows !== []) {
         $selectedCode = (string) $exportRows[0]['maPX'];
         $detailStatement = $pdo->prepare(
-            'SELECT p.maPX, p.ngayXuat, p.trangThai, p.maNV, p.maQL,
+            'SELECT p.maPX, p.ngayXuat, p.trangThai, p.maNV, p.maQL, p.ngayDuyet, p.lyDoTuChoi,
                     nv.hoTen AS tenNV, ql.hoTen AS tenQL,
                     ct.maTP, ct.soLuong, tp.tenTP, tp.donViTinh, tp.soLuong AS tonKho
              FROM PHIEUXUATTP p
@@ -180,15 +196,31 @@ try {
 $allCount = count($allExportRows ?? []);
 $pendingCount = count(array_filter($allExportRows ?? [], static fn (array $row): bool => (int) $row['trangThai'] === 0));
 $approvedCount = count(array_filter($allExportRows ?? [], static fn (array $row): bool => (int) $row['trangThai'] === 1));
+$rejectedCount = count(array_filter($allExportRows ?? [], static fn (array $row): bool => (int) $row['trangThai'] === 2));
 
 require_once '../includes/header.php';
 
-$statusLabel = $selectedExport !== null && (int) $selectedExport['trangThai'] === 1
+$selectedStatus = $selectedExport !== null ? (int) $selectedExport['trangThai'] : 0;
+$statusLabel = $selectedStatus === 1
     ? 'Đã duyệt xuất bán (Đã trừ kho TP)'
-    : 'Chờ quản lý duyệt';
-$statusClass = $selectedExport !== null && (int) $selectedExport['trangThai'] === 1
+    : ($selectedStatus === 2 ? 'Đã từ chối' : 'Chờ quản lý duyệt');
+$statusClass = $selectedStatus === 1
     ? 'border-teal-200 bg-teal-50 text-teal-600'
-    : 'border-amber-200 bg-amber-50 text-amber-700';
+    : ($selectedStatus === 2 ? 'border-rose-200 bg-rose-50 text-rose-600' : 'border-amber-200 bg-amber-50 text-amber-700');
+$statusIcon = $selectedStatus === 1
+    ? 'fa-regular fa-circle-check'
+    : ($selectedStatus === 2 ? 'fa-regular fa-circle-xmark' : 'fa-regular fa-clock');
+
+// Kiểm tra tồn kho: chặn phê duyệt nếu có mặt hàng không đủ số lượng.
+$stockShortage = false;
+foreach ($detailRows as $detail) {
+    if ((int) $detail['tonKho'] < (int) $detail['soLuong']) {
+        $stockShortage = true;
+        break;
+    }
+}
+$canApprove = $isManager && $selectedExport !== null && $selectedStatus === 0 && !$stockShortage;
+$canReject = $isManager && $selectedExport !== null && $selectedStatus === 0;
 ?>
 
 <div class="flex justify-between items-center mb-6">
@@ -224,12 +256,13 @@ $statusClass = $selectedExport !== null && (int) $selectedExport['trangThai'] ==
     <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert"><?= $escape($errorMessage) ?></div>
 <?php endif; ?>
 
-<div class="flex items-center gap-2 mb-4 border-b border-slate-200 pb-2">
+<div class="flex flex-wrap items-center justify-between gap-3 mb-4 border-b border-slate-200 pb-2">
     <?php
     $filters = [
         'all' => ['label' => 'Tất cả', 'count' => $allCount, 'icon' => ''],
         'pending' => ['label' => 'Chờ duyệt', 'count' => $pendingCount, 'icon' => 'fa-regular fa-clock'],
         'approved' => ['label' => 'Đã xuất bán', 'count' => $approvedCount, 'icon' => 'fa-regular fa-circle-check'],
+        'rejected' => ['label' => 'Từ chối', 'count' => $rejectedCount, 'icon' => 'fa-regular fa-circle-xmark'],
     ];
     foreach ($filters as $filterKey => $filter):
         $active = $statusFilter === $filterKey;
@@ -240,6 +273,19 @@ $statusClass = $selectedExport !== null && (int) $selectedExport['trangThai'] ==
             <?= $escape($filter['label']) ?> (<?= (int) $filter['count'] ?>)
         </a>
     <?php endforeach; ?>
+
+    <form method="get" class="flex items-center gap-2" role="search">
+        <input type="hidden" name="status" value="<?= $escape($statusFilter) ?>">
+        <div class="relative">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i>
+            <input type="search" name="q" value="<?= $escape($searchQuery) ?>" placeholder="Tìm mã lệnh xuất / người yêu cầu"
+                   class="w-64 rounded-lg border border-slate-300 py-1.5 pl-8 pr-3 text-[13px] focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500" aria-label="Tìm kiếm">
+        </div>
+        <button type="submit" class="rounded-lg bg-slate-900 px-3 py-1.5 text-[13px] font-medium text-white hover:bg-slate-700 transition">Tìm</button>
+        <?php if ($searchQuery !== ''): ?>
+            <a href="?status=<?= $escape($statusFilter) ?>" class="text-[13px] text-slate-500 hover:text-slate-800">Xóa lọc</a>
+        <?php endif; ?>
+    </form>
 </div>
 
 <div class="flex gap-6 items-start">
@@ -250,18 +296,28 @@ $statusClass = $selectedExport !== null && (int) $selectedExport['trangThai'] ==
             <?php foreach ($exportRows as $row): ?>
                 <?php
                 $isSelected = (string) $row['maPX'] === $selectedCode;
-                $rowStatus = (int) $row['trangThai'] === 1;
+                $rowStatus = (int) $row['trangThai'];
+                $rowStatusClass = $rowStatus === 1
+                    ? 'bg-teal-100 text-teal-700'
+                    : ($rowStatus === 2 ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700');
+                $rowStatusLabel = $rowStatus === 1
+                    ? 'Đã duyệt bán'
+                    : ($rowStatus === 2 ? 'Đã từ chối' : 'Chờ QL duyệt');
+                $rowUrl = '?status=' . urlencode($statusFilter) . '&maPX=' . urlencode((string) $row['maPX']);
+                if ($searchQuery !== '') {
+                    $rowUrl .= '&q=' . urlencode($searchQuery);
+                }
                 ?>
-                <a href="?status=<?= $escape($statusFilter) ?>&maPX=<?= urlencode((string) $row['maPX']) ?>"
+                <a href="<?= $rowUrl ?>"
                    class="block bg-white <?= $isSelected ? 'border-2 border-teal-400' : 'border border-slate-200 hover:border-teal-300' ?> rounded-xl p-4 shadow-sm transition">
                     <div class="flex justify-between items-start mb-2">
                         <div class="flex items-center gap-2">
                             <span class="<?= $isSelected ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-600 border border-slate-200' ?> text-xs font-bold px-2 py-0.5 rounded"><?= $escape($row['maPX']) ?></span>
-                            <span class="<?= $rowStatus ? 'bg-teal-100 text-teal-700' : 'bg-amber-100 text-amber-700' ?> text-[10px] font-medium px-2 py-0.5 rounded"><?= $rowStatus ? 'Đã duyệt bán' : 'Chờ QL duyệt' ?></span>
+                            <span class="<?= $rowStatusClass ?> text-[10px] font-medium px-2 py-0.5 rounded"><?= $escape($rowStatusLabel) ?></span>
                         </div>
-                        <?php if (!$rowStatus && $isManager): ?><span class="bg-red-50 text-red-600 text-[10px] font-medium px-2 py-0.5 rounded border border-red-100">Cần duyệt</span><?php endif; ?>
+                        <?php if ($rowStatus === 0 && $isManager): ?><span class="bg-red-50 text-red-600 text-[10px] font-medium px-2 py-0.5 rounded border border-red-100">Cần duyệt</span><?php endif; ?>
                     </div>
-                    <div class="text-sm text-slate-700 mb-1 font-medium"><?= (int) $row['soMatHang'] ?> mặt hàng thành phẩm</div>
+                    <div class="text-sm text-slate-700 mb-1 font-medium"><?= (int) $row['soMatHang'] ?> mặt hàng thành phẩm &bull; Tổng SL: <?= (int) $row['tongSoLuong'] ?></div>
                     <div class="text-[11px] text-slate-400"><?= $escape($row['ngayXuat']) ?> &bull; Lập bởi: <?= $escape($row['tenNV'] ?: $row['maNV']) ?></div>
                 </a>
             <?php endforeach; ?>
@@ -280,22 +336,55 @@ $statusClass = $selectedExport !== null && (int) $selectedExport['trangThai'] ==
                     </div>
                     <div class="grid grid-cols-2 gap-4 mb-2">
                         <div><div class="text-[11px] text-slate-400">Nhân viên đề xuất:</div><div class="text-sm font-semibold text-slate-800"><?= $escape($selectedExport['tenNV'] ?: $selectedExport['maNV']) ?></div></div>
-                        <div><div class="text-[11px] text-slate-400">Quản lý phê duyệt:</div><div class="text-sm font-semibold text-slate-800"><?= $escape($selectedExport['tenQL'] ?: $selectedExport['maQL']) ?></div></div>
+                        <div><div class="text-[11px] text-slate-400">Quản lý phê duyệt:</div><div class="text-sm font-semibold text-slate-800"><?= $escape($selectedExport['tenQL'] ?: ($selectedStatus === 0 ? 'Chưa duyệt' : $selectedExport['maQL'])) ?></div></div>
                     </div>
+                    <?php if ($selectedStatus !== 0 && !empty($selectedExport['ngayDuyet'])): ?>
+                        <div class="text-[11px] text-slate-400">Thời gian xử lý: <span class="font-medium text-slate-600"><?= $escape($selectedExport['ngayDuyet']) ?></span></div>
+                    <?php endif; ?>
+                    <?php if ($selectedStatus === 2 && !empty($selectedExport['lyDoTuChoi'])): ?>
+                        <div class="mt-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700"><i class="fa-solid fa-circle-exclamation mr-1"></i>Lý do từ chối: <span class="font-medium"><?= $escape($selectedExport['lyDoTuChoi']) ?></span></div>
+                    <?php endif; ?>
                 </div>
-                <span class="border <?= $statusClass ?> text-xs px-3 py-1.5 rounded-full font-medium flex items-center gap-1 uppercase"><i class="<?= (int) $selectedExport['trangThai'] === 1 ? 'fa-regular fa-circle-check' : 'fa-regular fa-clock' ?>"></i> <?= $escape($statusLabel) ?></span>
+                <span class="border <?= $statusClass ?> text-xs px-3 py-1.5 rounded-full font-medium flex items-center gap-1 uppercase"><i class="<?= $statusIcon ?>"></i> <?= $escape($statusLabel) ?></span>
             </div>
+            <?php if ($stockShortage && $selectedStatus === 0): ?>
+                <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+                    <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+                    Tồn kho hiện tại không đủ để duyệt phiếu này. Vui lòng kiểm tra các mặt hàng được đánh dấu đỏ bên dưới.
+                </div>
+            <?php endif; ?>
             <div class="mb-3"><h4 class="font-bold text-slate-700 text-xs uppercase">DANH SÁCH THÀNH PHẨM XUẤT BÁN</h4></div>
             <div class="overflow-x-auto rounded-lg border border-slate-200">
                 <table class="w-full text-left text-sm">
                     <thead class="bg-slate-50 text-slate-500 text-[10px] uppercase font-semibold"><tr><th class="px-4 py-3 border-b border-slate-200">Mã TP</th><th class="px-4 py-3 border-b border-slate-200">Tên Thành Phẩm</th><th class="px-4 py-3 border-b border-slate-200">ĐVT</th><th class="px-4 py-3 text-center border-b border-slate-200">Số lượng xuất</th><th class="px-4 py-3 text-right border-b border-slate-200">Tồn kho hiện tại</th><th class="px-4 py-3 text-center border-b border-slate-200">Tình trạng kho</th></tr></thead>
                     <tbody class="divide-y divide-slate-100 text-xs">
                         <?php foreach ($detailRows as $detail): ?>
-                            <tr class="hover:bg-slate-50 transition"><td class="px-4 py-3 font-bold text-slate-800"><?= $escape($detail['maTP']) ?></td><td class="px-4 py-3 text-slate-700"><?= $escape($detail['tenTP']) ?></td><td class="px-4 py-3 text-slate-500"><?= $escape($detail['donViTinh']) ?></td><td class="px-4 py-3 text-center font-bold text-teal-600"><?= (int) $detail['soLuong'] ?></td><td class="px-4 py-3 text-right font-medium text-slate-700"><?= (int) $detail['tonKho'] ?> <?= $escape($detail['donViTinh']) ?></td><td class="px-4 py-3 text-center <?= (int) $selectedExport['trangThai'] === 1 ? 'text-teal-600' : 'text-amber-600' ?> font-medium"><?= (int) $selectedExport['trangThai'] === 1 ? 'Đã xuất bán' : 'Chờ duyệt' ?></td></tr>
+                            <?php $isShort = (int) $detail['tonKho'] < (int) $detail['soLuong']; ?>
+                            <tr class="hover:bg-slate-50 transition"><td class="px-4 py-3 font-bold text-slate-800"><?= $escape($detail['maTP']) ?></td><td class="px-4 py-3 text-slate-700"><?= $escape($detail['tenTP']) ?></td><td class="px-4 py-3 text-slate-500"><?= $escape($detail['donViTinh']) ?></td><td class="px-4 py-3 text-center font-bold text-teal-600"><?= (int) $detail['soLuong'] ?></td><td class="px-4 py-3 text-right font-medium <?= $isShort && $selectedStatus === 0 ? 'text-red-600' : 'text-slate-700' ?>"><?= (int) $detail['tonKho'] ?> <?= $escape($detail['donViTinh']) ?><?= $isShort && $selectedStatus === 0 ? ' <i class="fa-solid fa-triangle-exclamation"></i>' : '' ?></td><td class="px-4 py-3 text-center <?= $selectedStatus === 1 ? 'text-teal-600' : ($selectedStatus === 2 ? 'text-rose-600' : 'text-amber-600') ?> font-medium"><?= $selectedStatus === 1 ? 'Đã xuất bán' : ($selectedStatus === 2 ? 'Đã từ chối' : 'Chờ duyệt') ?></td></tr>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>
+            <?php if ($selectedStatus === 0 && $isManager): ?>
+                <div class="mt-5 flex flex-wrap items-center justify-end gap-3 border-t border-slate-100 pt-4">
+                    <button type="button" id="openRejectBtn" class="rounded-lg border border-rose-200 bg-white px-4 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50 transition">
+                        <i class="fa-solid fa-ban mr-1"></i> Từ chối
+                    </button>
+                    <?php if ($stockShortage): ?>
+                        <button type="button" disabled class="cursor-not-allowed rounded-lg bg-slate-300 px-4 py-2 text-sm font-medium text-white" title="Tồn kho không đủ để phê duyệt">
+                            <i class="fa-solid fa-check mr-1"></i> Phê duyệt
+                        </button>
+                    <?php else: ?>
+                        <form id="approveForm" action="../ajax/approve_export_product.php" method="post" class="inline">
+                            <input type="hidden" name="csrf_token" value="<?= $escape(csrf_token()) ?>">
+                            <input type="hidden" name="maPX" value="<?= $escape($selectedExport['maPX']) ?>">
+                            <button type="submit" class="rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 transition">
+                                <i class="fa-solid fa-check mr-1"></i> Phê duyệt &amp; trừ kho
+                            </button>
+                        </form>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
         <?php endif; ?>
     </div>
 </div>
@@ -339,41 +428,52 @@ $statusClass = $selectedExport !== null && (int) $selectedExport['trangThai'] ==
 </div>
 <?php endif; ?>
 
-<?php require_once '../includes/footer.php'; ?>
-<?php if (!$isManager): ?>
-<script>
-    const stockErrorToast = document.getElementById('stockErrorToast');
-    const closeStockErrorToast = document.getElementById('closeStockErrorToast');
-    if (stockErrorToast && closeStockErrorToast) {
-        const hideStockErrorToast = () => stockErrorToast.remove();
-        closeStockErrorToast.addEventListener('click', hideStockErrorToast);
-        window.setTimeout(hideStockErrorToast, 10000);
-    }
+<?php if ($isManager): ?>
+<div id="confirmApproveModal" class="fixed inset-0 z-[60] hidden items-center justify-center bg-slate-900/60 px-4" role="dialog" aria-modal="true" aria-labelledby="confirmApproveTitle">
+    <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
+        <div class="mb-4 flex items-center gap-3">
+            <div class="bg-teal-100 text-teal-600 p-2 rounded-lg"><i class="fa-solid fa-circle-question text-lg"></i></div>
+            <h3 id="confirmApproveTitle" class="text-lg font-bold text-slate-800">Xác nhận phê duyệt</h3>
+        </div>
+        <p class="text-sm text-slate-600">Bạn có chắc chắn muốn phê duyệt phiếu xuất <strong id="confirmApproveCode" class="text-slate-800"><?= $escape($selectedExport['maPX'] ?? '') ?></strong>? Hành động này sẽ trừ tồn kho thành phẩm tương ứng và không thể hoàn tác.</p>
+        <div class="mt-6 flex justify-end gap-3 border-t border-slate-100 pt-4">
+            <button type="button" id="cancelConfirmApprove" class="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">Hủy</button>
+            <button type="button" id="confirmApproveBtn" class="rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700">
+                <i class="fa-solid fa-check mr-1"></i> Xác nhận duyệt
+            </button>
+        </div>
+    </div>
+</div>
 
-    const exportModal = document.getElementById('exportModal');
-    const exportItems = document.getElementById('exportItems');
-    const openExportModal = () => {
-        exportModal.classList.remove('hidden');
-        exportModal.classList.add('flex');
-    };
-    const closeExportModal = () => {
-        exportModal.classList.add('hidden');
-        exportModal.classList.remove('flex');
-    };
-    document.getElementById('openExportModal').addEventListener('click', openExportModal);
-    document.getElementById('closeExportModal').addEventListener('click', closeExportModal);
-    document.getElementById('cancelExportModal').addEventListener('click', closeExportModal);
-    document.getElementById('addExportItem').addEventListener('click', () => {
-        const item = exportItems.firstElementChild.cloneNode(true);
-        item.querySelector('select').value = '';
-        item.querySelector('input').value = '';
-        item.querySelector('.remove-export-item').classList.remove('hidden');
-        exportItems.appendChild(item);
-    });
-    exportItems.addEventListener('click', (event) => {
-        if (event.target.classList.contains('remove-export-item')) {
-            event.target.closest('.export-item').remove();
-        }
-    });
-</script>
+<div id="rejectModal" class="fixed inset-0 z-[60] hidden items-center justify-center bg-slate-900/60 px-4" role="dialog" aria-modal="true" aria-labelledby="rejectModalTitle">
+    <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
+        <div class="mb-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="bg-rose-100 text-rose-600 p-2 rounded-lg"><i class="fa-solid fa-ban text-lg"></i></div>
+                <h3 id="rejectModalTitle" class="text-lg font-bold text-slate-800">Từ chối phiếu xuất</h3>
+            </div>
+            <button type="button" id="closeReject" class="text-2xl text-slate-400 hover:text-slate-700" aria-label="Đóng">&times;</button>
+        </div>
+        <form id="rejectForm" action="../ajax/reject_export_product.php" method="post">
+            <input type="hidden" name="csrf_token" value="<?= $escape(csrf_token()) ?>">
+            <input type="hidden" name="maPX" value="<?= $escape($selectedExport['maPX'] ?? '') ?>">
+            <label class="block text-xs font-medium text-slate-700" for="rejectReason">Lý do từ chối
+                <textarea id="rejectReason" name="lyDoTuChoi" rows="3" maxlength="255" required
+                          class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                          placeholder="Nhập lý do từ chối phiếu xuất này..."></textarea>
+            </label>
+            <p id="rejectReasonError" class="mt-2 hidden text-xs text-rose-600">Vui lòng nhập lý do từ chối trước khi gửi.</p>
+            <div class="mt-6 flex justify-end gap-3 border-t border-slate-100 pt-4">
+                <button type="button" id="cancelReject" class="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">Hủy</button>
+                <button type="submit" class="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700">
+                    <i class="fa-solid fa-paper-plane mr-1"></i> Gửi từ chối
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 <?php endif; ?>
+
+<?php require_once '../includes/footer.php'; ?>
+<script src="../assets/js/export_products.js"></script>
+

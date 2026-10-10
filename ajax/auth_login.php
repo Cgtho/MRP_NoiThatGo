@@ -52,7 +52,7 @@ try {
 
     if ((int) $employee['trangThai'] !== 1) {
         http_response_code(403);
-        echo json_encode(['success' => false, 'message' => 'Tài khoản đã bị khóa hoặc không còn hoạt động.']);
+        echo json_encode(['success' => false, 'message' => 'Tài khoản đã bị khóa.']);
         exit;
     }
 

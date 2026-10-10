@@ -70,22 +70,20 @@ $startStr = $start->format('Y-m-d H:i:s');
 $endStr = $end->format('Y-m-d H:i:s');
 
 // Tổng hợp số liệu thật từ CSDL.
-$totalImportQty = 0; $totalImportLines = 0;
+$totalImportQty = 0;
 $totalExportNvlQty = 0; $totalStockNvlQty = 0; $totalStockNvlKinds = 0;
 $totalExportTpQty = 0; $totalStockTpQty = 0; $totalStockTpKinds = 0;
 $nvlRows = []; $tpRows = [];
 if ($reportError === null) {
     try {
         $st = $pdo->prepare(
-            'SELECT COALESCE(SUM(ct.soLuong),0) t, COUNT(ct.maNVL) c
+            'SELECT COALESCE(SUM(ct.soLuong),0)
              FROM CHITIETPHIEUNHAP ct
              INNER JOIN PHIEUNHAPKHO p ON p.maPN = ct.maPN
-             WHERE p.ngayNhap >= :s AND p.ngayNhap < :e'
+             WHERE p.trangThai = 1 AND p.ngayNhap >= :s AND p.ngayNhap < :e'
         );
         $st->execute(['s' => $startStr, 'e' => $endStr]);
-        $r = $st->fetch() ?: [];
-        $totalImportQty = (int)($r['t'] ?? 0);
-        $totalImportLines = (int)($r['c'] ?? 0);
+        $totalImportQty = (int)$st->fetchColumn();
 
         $st = $pdo->prepare(
             'SELECT COALESCE(SUM(ct.soLuong),0)
@@ -125,7 +123,7 @@ if ($reportError === null) {
              LEFT JOIN (SELECT ct.maNVL, SUM(ct.soLuong) t
                  FROM CHITIETPHIEUNHAP ct
                  INNER JOIN PHIEUNHAPKHO p ON p.maPN = ct.maPN
-                 WHERE p.ngayNhap >= :s1 AND p.ngayNhap < :e1 GROUP BY ct.maNVL) nh
+                 WHERE p.trangThai = 1 AND p.ngayNhap >= :s1 AND p.ngayNhap < :e1 GROUP BY ct.maNVL) nh
                  ON nh.maNVL = nvl.maNVL
              LEFT JOIN (SELECT ct.maNVL, SUM(ct.soLuong) t
                  FROM CHITIETPHIEUXUATNVL ct
@@ -154,6 +152,41 @@ if ($reportError === null) {
         $reportError = 'Không thể tải dữ liệu báo cáo từ cơ sở dữ liệu.';
     }
 }
+
+// Sắp xếp bảng NVL theo tình trạng tồn kho (nghiêm trọng trước):
+// Hết hàng -> Sắp hết -> Mức an toàn -> Dồi dào; cùng mức thì theo mã NVL.
+// Đặt trước khối xuất CSV để cả file CSV và bảng HTML dùng chung một thứ tự.
+$nvlStatusRank = static function (int $ton): int {
+    if ($ton <= 0) { return 0; }
+    if ($ton <= 150) { return 1; }
+    if ($ton <= 400) { return 2; }
+    return 3;
+};
+usort($nvlRows, static function (array $a, array $b) use ($nvlStatusRank): int {
+    $ra = $nvlStatusRank((int) $a['tonKho']);
+    $rb = $nvlStatusRank((int) $b['tonKho']);
+    if ($ra === $rb) {
+        return strcmp((string) $a['maNVL'], (string) $b['maNVL']);
+    }
+    return $ra <=> $rb;
+});
+
+// Sắp xếp bảng Thành phẩm theo tình trạng kinh doanh (khẩn cấp trước):
+// Hết hàng -> Bán chạy -> Sắp hết -> Sẵn sàng bán; cùng mức thì theo mã TP.
+$tpStatusRank = static function (int $xuat, int $ton): int {
+    if ($ton <= 0) { return 0; }
+    if ($xuat > 0 && $ton < 20) { return 1; }
+    if ($ton < 10) { return 2; }
+    return 3;
+};
+usort($tpRows, static function (array $a, array $b) use ($tpStatusRank): int {
+    $ra = $tpStatusRank((int) $a['tongXuat'], (int) $a['tonKho']);
+    $rb = $tpStatusRank((int) $b['tongXuat'], (int) $b['tonKho']);
+    if ($ra === $rb) {
+        return strcmp((string) $a['maTP'], (string) $b['maTP']);
+    }
+    return $ra <=> $rb;
+});
 
 // Xuất CSV + helpers hiển thị.
 if (($_GET['export'] ?? '') === 'csv' && $reportError === null) {
@@ -185,10 +218,6 @@ if (($_GET['export'] ?? '') === 'csv' && $reportError === null) {
 }
 
 $fmt = static function ($n): string { return number_format((int)$n, 0, ',', '.'); };
-$maxBar = max($totalImportQty, $totalExportNvlQty, $totalStockNvlQty, 1);
-$barPct = static function ($n) use ($maxBar): int {
-    return (int)round(((int)$n / $maxBar) * 100);
-};
 $nvlStatus = static function (int $ton): array {
     if ($ton <= 0) { return ['Hết hàng', 'bg-red-50 text-red-600 border-red-200']; }
     if ($ton <= 150) { return ['Sắp hết', 'bg-red-50 text-red-600 border-red-200']; }
@@ -270,9 +299,133 @@ $qs = static function (array $o): string {
             <option value="<?= htmlspecialchars($opt, ENT_QUOTES, 'UTF-8') ?>" <?= $opt === $period ? 'selected' : '' ?>><?= htmlspecialchars($periodOptLabel($opt, $mode), ENT_QUOTES, 'UTF-8') ?><?= $opt === $list[0] ? ' (Kỳ hiện tại)' : '' ?></option>
             <?php endforeach; ?>
         </select>
-        <span class="text-[11px] text-slate-400">Dữ liệu tổng hợp từ các bảng PHIEUNHAP & PHIEUXUAT (<?= htmlspecialchars($periodLabel, ENT_QUOTES, 'UTF-8') ?>)</span>
+        <span class="text-[11px] text-slate-400">Số liệu tổng hợp theo kỳ: <?= htmlspecialchars($periodLabel, ENT_QUOTES, 'UTF-8') ?></span>
     </div>
 </form>
+
+<!-- ================= MRP ANALYTICS DASHBOARD ================= -->
+<div id="mrpDashboard" class="mb-8">
+    <div class="flex items-center gap-3 mb-4">
+        <div class="bg-indigo-100 text-indigo-600 p-2 rounded-lg text-xl"><i class="fa-solid fa-diagram-project"></i></div>
+        <div>
+            <h3 class="text-lg font-bold text-slate-800">Phân Tích MRP &amp; Cân Đối Vật Tư</h3>
+            <p class="text-xs text-slate-500">Tính nhu cầu nguyên vật liệu cho các lệnh sản xuất đang hoạt động (Chờ xử lý / Đang làm) theo định mức BOM.</p>
+        </div>
+    </div>
+
+    <!-- Loading -->
+    <div id="mrpLoading" class="bg-white border border-slate-200 rounded-xl shadow-sm p-12 flex flex-col items-center justify-center text-slate-500">
+        <i class="fa-solid fa-circle-notch fa-spin text-3xl text-indigo-500 mb-3"></i>
+        <span class="text-sm">Đang tải dữ liệu thống kê MRP...</span>
+    </div>
+
+    <!-- Error -->
+    <div id="mrpError" class="hidden bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 rounded-xl">
+        <i class="fa-solid fa-circle-exclamation mr-2"></i><span id="mrpErrorText"></span>
+    </div>
+
+    <div id="mrpContent" class="hidden">
+        <!-- KPI Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                <div class="flex justify-between items-start mb-2">
+                    <div class="text-xs font-semibold text-slate-500 uppercase">Tổng nhu cầu vật tư</div>
+                    <i class="fa-solid fa-layer-group text-indigo-500"></i>
+                </div>
+                <div id="kpiTotalRequirement" class="text-3xl font-bold text-slate-800 mb-1">0</div>
+                <div class="text-[11px] text-slate-400">Lượng NVL cần cho lệnh SX đang hoạt động</div>
+            </div>
+
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                <div class="flex justify-between items-start mb-2">
+                    <div class="text-xs font-semibold text-slate-500 uppercase">Chủng loại thiếu hụt</div>
+                    <i class="fa-solid fa-triangle-exclamation text-red-500"></i>
+                </div>
+                <div id="kpiShortageKinds" class="text-3xl font-bold text-red-600 mb-1">0</div>
+                <div class="text-[11px] text-slate-400">Mã NVL có nhu cầu vượt tồn kho</div>
+            </div>
+
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                <div class="flex justify-between items-start mb-2">
+                    <div class="text-xs font-semibold text-slate-500 uppercase">Lệnh SX đang chờ</div>
+                    <i class="fa-regular fa-clock text-amber-500"></i>
+                </div>
+                <div id="kpiOrdersPending" class="text-3xl font-bold text-slate-800 mb-1">0</div>
+                <div class="text-[11px] text-slate-400">Trạng thái: Chờ xử lý</div>
+            </div>
+
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                <div class="flex justify-between items-start mb-2">
+                    <div class="text-xs font-semibold text-slate-500 uppercase">Đang làm / Hoàn thành</div>
+                    <i class="fa-solid fa-arrows-rotate text-blue-500"></i>
+                </div>
+                <div class="text-2xl font-bold text-slate-800 mb-1">
+                    <span id="kpiOrdersInProgress">0</span>
+                    <span class="text-slate-300 mx-1">/</span>
+                    <span id="kpiOrdersCompleted" class="text-emerald-600">0</span>
+                </div>
+                <div class="text-[11px] text-slate-400">Đang làm / Đã hoàn thành</div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-6">
+            <div class="xl:col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <h4 class="font-bold text-slate-800 mb-4 text-sm">Top 10 NVL: Nhu cầu MRP vs Tồn kho</h4>
+                <div class="relative h-72"><canvas id="mrpBarChart"></canvas></div>
+            </div>
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                <h4 class="font-bold text-slate-800 mb-4 text-sm">Tỷ lệ trạng thái lệnh sản xuất</h4>
+                <div class="relative h-72"><canvas id="mrpDoughnutChart"></canvas></div>
+            </div>
+        </div>
+
+        <!-- MRP Table -->
+        <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
+            <div class="flex flex-wrap justify-between items-end gap-3 mb-4">
+                <div>
+                    <h4 class="font-bold text-slate-800">Bảng Chi Tiết Cân Đối Vật Tư (MRP)</h4>
+                    <span class="text-[11px] text-slate-400">Tổng <strong id="mrpRowCount" class="text-slate-600">0</strong> nguyên vật liệu</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i>
+                        <input id="mrpSearch" type="search" placeholder="Tìm mã / tên NVL..."
+                               class="w-56 rounded-lg border border-slate-300 py-1.5 pl-8 pr-3 text-[13px] focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" aria-label="Tìm kiếm">
+                    </div>
+                    <select id="mrpStatusFilter" class="rounded-lg border border-slate-300 py-1.5 px-2 text-[13px] text-slate-700 focus:border-indigo-500 focus:outline-none" aria-label="Lọc trạng thái">
+                        <option value="all">Tất cả</option>
+                        <option value="thieu">Thiếu hụt</option>
+                        <option value="du">Đủ hàng</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto rounded-lg border border-slate-200 min-h-[420px]">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-slate-50 text-slate-500 text-[10px] uppercase font-semibold">
+                        <tr>
+                            <th class="px-4 py-3 border-b border-slate-200">Mã NVL</th>
+                            <th class="px-4 py-3 border-b border-slate-200">Tên Nguyên Vật Liệu</th>
+                            <th class="px-4 py-3 border-b border-slate-200">ĐVT</th>
+                            <th class="px-4 py-3 text-right border-b border-slate-200">Tồn kho hiện tại</th>
+                            <th class="px-4 py-3 text-right border-b border-slate-200">Tổng nhu cầu SX</th>
+                            <th class="px-4 py-3 text-right border-b border-slate-200">Chênh lệch (thiếu)</th>
+                            <th class="px-4 py-3 text-center border-b border-slate-200">Trạng thái</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mrpTableBody" class="divide-y divide-slate-100 text-xs"></tbody>
+                </table>
+            </div>
+
+            <div class="flex flex-wrap justify-between items-center gap-3 mt-4">
+                <span id="mrpTableInfo" class="text-[11px] text-slate-400"></span>
+                <div id="mrpPagination" class="flex items-center gap-1"></div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- =============== END MRP ANALYTICS DASHBOARD =============== -->
 
 <!-- 4 Thống kê -->
 <div class="grid grid-cols-4 gap-4 mb-6">
@@ -282,7 +435,7 @@ $qs = static function (array $o): string {
             <i class="fa-solid fa-arrow-right-to-bracket text-emerald-500"></i>
         </div>
         <div class="text-3xl font-bold text-slate-800 mb-1">+<?= $fmt($totalImportQty) ?></div>
-        <div class="text-[11px] text-slate-400">Gồm <?= $fmt($totalImportLines) ?> dòng nhập Nguyên Vật Liệu (<?= htmlspecialchars($periodLabel, ENT_QUOTES, 'UTF-8') ?>)</div>
+        <div class="text-[11px] text-slate-400">Phiếu nhập đã duyệt (<?= htmlspecialchars($periodLabel, ENT_QUOTES, 'UTF-8') ?>)</div>
     </div>
     
     <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
@@ -313,53 +466,16 @@ $qs = static function (array $o): string {
     </div>
 </div>
 
-<!-- Biểu đồ ngang -->
-<div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm mb-6">
-    <h3 class="font-bold text-slate-800 mb-4">Cân Đối Xuất - Nhập - Tồn Kho Vật Tư (Biểu Đồ Tỷ Lệ) — <?= htmlspecialchars($periodLabel, ENT_QUOTES, 'UTF-8') ?></h3>
-    <div class="space-y-4">
-        <!-- Bar 1 -->
-        <div>
-            <div class="flex justify-between text-xs mb-1 font-medium text-slate-700">
-                <span>Nguyên vật liệu nhập vào (+<?= $fmt($totalImportQty) ?>)</span>
-                <span class="text-emerald-600 font-bold"><?= $barPct($totalImportQty) ?>%</span>
-            </div>
-            <div class="w-full bg-slate-100 rounded-full h-2.5">
-                <div class="bg-emerald-500 h-2.5 rounded-full" style="width: <?= $barPct($totalImportQty) ?>%"></div>
-            </div>
-        </div>
-        <!-- Bar 2 -->
-        <div>
-            <div class="flex justify-between text-xs mb-1 font-medium text-slate-700">
-                <span>Nguyên vật liệu đã xuất sản xuất (-<?= $fmt($totalExportNvlQty) ?>)</span>
-                <span class="text-orange-500 font-bold"><?= $barPct($totalExportNvlQty) ?>%</span>
-            </div>
-            <div class="w-full bg-slate-100 rounded-full h-2.5">
-                <div class="bg-orange-500 h-2.5 rounded-full" style="width: <?= $barPct($totalExportNvlQty) ?>%"></div>
-            </div>
-        </div>
-        <!-- Bar 3 -->
-        <div>
-            <div class="flex justify-between text-xs mb-1 font-medium text-slate-700">
-                <span>Tồn kho nguyên vật liệu hiện tại (<?= $fmt($totalStockNvlQty) ?>)</span>
-                <span class="text-blue-600 font-bold"><?= $barPct($totalStockNvlQty) ?>%</span>
-            </div>
-            <div class="w-full bg-slate-100 rounded-full h-2.5">
-                <div class="bg-blue-600 h-2.5 rounded-full" style="width: <?= $barPct($totalStockNvlQty) ?>%"></div>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- Bảng chi tiết báo cáo -->
 <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
     <div class="flex justify-between items-end mb-4">
-        <h4 class="font-bold text-slate-800">1. Bảng Tổng Hợp Tồn, Nhập & Xuất Nguyên Vật Liệu (NGUYENVATLIEU) — <?= htmlspecialchars($periodLabel, ENT_QUOTES, 'UTF-8') ?></h4>
+        <h4 class="font-bold text-slate-800">1. Bảng Tổng Hợp Tồn, Nhập &amp; Xuất Nguyên Vật Liệu — <?= htmlspecialchars($periodLabel, ENT_QUOTES, 'UTF-8') ?></h4>
         <span class="text-[11px] text-slate-400">Đơn vị tính quy chuẩn</span>
     </div>
     
-    <div class="overflow-x-auto rounded-lg border border-slate-200">
+    <div class="overflow-x-auto overflow-y-auto max-h-[480px] scrollbar-custom rounded-lg border border-slate-200">
         <table class="w-full text-left text-sm">
-            <thead class="bg-slate-50 text-slate-500 text-[10px] uppercase font-semibold">
+            <thead class="bg-slate-50 text-slate-500 text-[10px] uppercase font-semibold sticky top-0 z-10">
                 <tr>
                     <th class="px-4 py-3 border-b border-slate-200">Mã NVL</th>
                     <th class="px-4 py-3 border-b border-slate-200">Tên Nguyên Vật Liệu</th>
@@ -395,13 +511,13 @@ $qs = static function (array $o): string {
 <!-- Bảng tổng hợp sản xuất & xuất bán thành phẩm -->
 <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-6 mt-6">
     <div class="flex justify-between items-end mb-4">
-        <h4 class="font-bold text-slate-800">2. Bảng Tổng Hợp Sản Xuất &amp; Xuất Bán Thành Phẩm (THANHPHAM) — <?= htmlspecialchars($periodLabel, ENT_QUOTES, 'UTF-8') ?></h4>
+        <h4 class="font-bold text-slate-800">2. Bảng Tổng Hợp Sản Xuất &amp; Xuất Bán Thành Phẩm — <?= htmlspecialchars($periodLabel, ENT_QUOTES, 'UTF-8') ?></h4>
         <span class="text-[11px] text-slate-400">Lưu kho thành phẩm</span>
     </div>
 
-    <div class="overflow-x-auto rounded-lg border border-slate-200">
+    <div class="overflow-x-auto overflow-y-auto max-h-[480px] scrollbar-custom rounded-lg border border-slate-200">
         <table class="w-full text-left text-sm">
-            <thead class="bg-slate-50 text-slate-500 text-[10px] uppercase font-semibold">
+            <thead class="bg-slate-50 text-slate-500 text-[10px] uppercase font-semibold sticky top-0 z-10">
                 <tr>
                     <th class="px-4 py-3 border-b border-slate-200">Mã TP</th>
                     <th class="px-4 py-3 border-b border-slate-200">Tên Thành Phẩm</th>
@@ -433,3 +549,7 @@ $qs = static function (array $o): string {
 </div>
 
 <?php require_once '../includes/footer.php'; ?>
+
+<!-- Chart.js cho dashboard MRP -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="../assets/js/mrp_report.js"></script>
