@@ -1,8 +1,9 @@
 <?php
 require_once '../includes/header.php';
 require_once '../config.php';
+require_once '../includes/csrf.php';
 
-$canManageUnits = (int) ($_SESSION['role'] ?? 1) === 0;
+$canManageMasterData = (int) ($_SESSION['role'] ?? 1) === 0;
 $search = trim((string) ($_GET['search'] ?? ''));
 $requestedView = $_GET['view'] ?? 'materials';
 $view = in_array($requestedView, ['materials', 'products', 'units'], true) ? $requestedView : 'materials';
@@ -33,7 +34,7 @@ try {
         $stmt->execute($search !== '' ? ['search' => "%{$search}%"] : []);
         $units = $stmt->fetchAll();
     } else {
-        $sql = 'SELECT nvl.tenNVL, dvt.tenDVT, nvl.soLuong
+        $sql = 'SELECT nvl.maNVL, nvl.tenNVL, dvt.tenDVT, nvl.soLuong
                 FROM NGUYENVATLIEU nvl
                 INNER JOIN DONVITINH dvt ON dvt.maDVT = nvl.maDVT';
 
@@ -45,6 +46,7 @@ try {
         $stmt = $pdo->prepare($sql);
         $stmt->execute($search !== '' ? ['search' => "%{$search}%"] : []);
         $materials = $stmt->fetchAll();
+        $units = $pdo->query('SELECT maDVT, tenDVT FROM DONVITINH ORDER BY tenDVT ASC')->fetchAll();
     }
 } catch (PDOException $e) {
     $inventoryError = 'Không thể tải dữ liệu tồn kho từ cơ sở dữ liệu.';
@@ -85,7 +87,11 @@ try {
 <div class="flex min-h-0 flex-1 flex-col bg-white border border-slate-200 rounded-xl shadow-sm p-6">
     <div class="flex justify-between items-end mb-4">
         <h3 class="font-bold text-slate-800"><?= $view === 'products' ? 'Tồn kho thành phẩm hiện tại' : ($view === 'units' ? 'Danh sách đơn vị tính' : 'Tồn kho nguyên vật liệu hiện tại') ?></h3>
-        <?php if ($view === 'units' && $canManageUnits): ?>
+        <?php if ($view === 'materials' && $canManageMasterData): ?>
+            <button id="openAddMaterialModal" type="button" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition flex items-center gap-2">
+                <i class="fa-solid fa-plus"></i> Thêm nguyên vật liệu
+            </button>
+        <?php elseif ($view === 'units' && $canManageMasterData): ?>
             <button id="openAddUnitModal" type="button" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition flex items-center gap-2">
                 <i class="fa-solid fa-plus"></i> Thêm đơn vị tính
             </button>
@@ -167,7 +173,74 @@ try {
     </div>
 </div>
 
-<?php if ($view === 'units' && $canManageUnits): ?>
+<?php if ($view === 'materials' && $canManageMasterData): ?>
+    <div id="addMaterialModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 items-center justify-center px-4">
+        <div class="bg-white rounded-xl w-full max-w-md shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="addMaterialTitle">
+            <div class="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+                <h3 id="addMaterialTitle" class="font-bold text-slate-800">Thêm nguyên vật liệu</h3>
+                <button id="closeAddMaterialModal" type="button" class="text-slate-400 hover:text-slate-700" aria-label="Đóng">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <form id="addMaterialForm" action="../ajax/add_material.php" method="post" class="p-5">
+                <?= csrf_field() ?>
+                <label for="materialName" class="mb-2 block text-sm font-medium text-slate-700">Tên nguyên vật liệu</label>
+                <input id="materialName" name="tenNVL" type="text" maxlength="50" required placeholder="Ví dụ: Gỗ MDF 18mm" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500">
+                <label for="materialUnit" class="mb-2 mt-4 block text-sm font-medium text-slate-700">Đơn vị tính</label>
+                <select id="materialUnit" name="maDVT" required class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500">
+                    <option value="">-- Chọn đơn vị --</option>
+                    <?php foreach ($units as $unit): ?>
+                        <option value="<?= (int) $unit['maDVT'] ?>"><?= htmlspecialchars($unit['tenDVT'], ENT_QUOTES, 'UTF-8') ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <p id="addMaterialMessage" class="mt-3 hidden rounded-lg px-3 py-2 text-sm" role="alert"></p>
+                <div class="mt-5 flex justify-end gap-2">
+                    <button id="cancelAddMaterial" type="button" class="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">Hủy</button>
+                    <button type="submit" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">Lưu nguyên vật liệu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <script>
+        const addMaterialModal = document.getElementById('addMaterialModal');
+        const addMaterialForm = document.getElementById('addMaterialForm');
+        const addMaterialMessage = document.getElementById('addMaterialMessage');
+        const closeAddMaterial = () => {
+            addMaterialModal.classList.add('hidden');
+            addMaterialModal.classList.remove('flex');
+        };
+
+        document.getElementById('openAddMaterialModal').addEventListener('click', () => {
+            addMaterialModal.classList.remove('hidden');
+            addMaterialModal.classList.add('flex');
+            document.getElementById('materialName').focus();
+        });
+        document.getElementById('closeAddMaterialModal').addEventListener('click', closeAddMaterial);
+        document.getElementById('cancelAddMaterial').addEventListener('click', closeAddMaterial);
+
+        addMaterialForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            addMaterialMessage.className = 'mt-3 hidden rounded-lg px-3 py-2 text-sm';
+            try {
+                const response = await fetch(addMaterialForm.action, {
+                    method: 'POST',
+                    body: new FormData(addMaterialForm),
+                    headers: { Accept: 'application/json' },
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    addMaterialMessage.textContent = result.message || 'Không thể thêm nguyên vật liệu.';
+                    addMaterialMessage.className = 'mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600';
+                    return;
+                }
+                window.location.href = 'inventory.php?view=materials';
+            } catch (error) {
+                addMaterialMessage.textContent = 'Không thể kết nối máy chủ.';
+                addMaterialMessage.className = 'mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600';
+            }
+        });
+    </script>
+<?php elseif ($view === 'units' && $canManageMasterData): ?>
     <div id="addUnitModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 items-center justify-center px-4">
         <div class="bg-white rounded-xl w-full max-w-md shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="addUnitTitle">
             <div class="flex items-center justify-between border-b border-slate-200 px-5 py-4">
