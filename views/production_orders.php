@@ -268,7 +268,7 @@ try {
          LEFT JOIN CHITIETYEUCAU ct ON ct.maYC = yc.maYC
          LEFT JOIN THANHPHAM tp ON tp.maTP = ct.maTP
          GROUP BY yc.maYC, yc.ngayYC, yc.maNV, yc.trangThai, nv.hoTen
-         ORDER BY yc.trangThai ASC, yc.maYC ASC'
+         ORDER BY yc.trangThai ASC, yc.ngayYC DESC, yc.maYC DESC'
     );
     $allOrders = $allOrdersStatement->fetchAll();
 
@@ -308,7 +308,13 @@ try {
         if ($statusCompare !== 0) {
             return $statusCompare;
         }
-        return strnatcasecmp((string) $left['maYC'], (string) $right['maYC']);
+
+        $dateCompare = strcmp((string) $right['ngayYC'], (string) $left['ngayYC']);
+        if ($dateCompare !== 0) {
+            return $dateCompare;
+        }
+
+        return strnatcasecmp((string) $right['maYC'], (string) $left['maYC']);
     });
 
     $orders = array_values(array_filter($allOrders, static function (array $order) use ($statusFilter): bool {
