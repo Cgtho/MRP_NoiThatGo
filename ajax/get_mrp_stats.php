@@ -39,10 +39,12 @@ try {
 
     // 2. Toàn bộ nguyên vật liệu: tồn kho thực tế + nhu cầu tương ứng.
     $materialStatement = $pdo->query(
-        'SELECT nvl.maNVL, nvl.tenNVL, dvt.tenDVT, nvl.soLuong AS tonKho
-         FROM NGUYENVATLIEU nvl
-         INNER JOIN DONVITINH dvt ON dvt.maDVT = nvl.maDVT
-         ORDER BY nvl.maNVL ASC'
+        'SELECT master.maNVL, master.tenNVL, dvt.tenDVT,
+            COALESCE(workshop.soLuong, 0) AS tonKho
+         FROM NGUYENVATLIEU master
+         LEFT JOIN NGUYENVATLIEUXUONG workshop ON workshop.maNVL = master.maNVL
+         INNER JOIN DONVITINH dvt ON dvt.maDVT = master.maDVT
+         ORDER BY master.maNVL ASC'
     );
 
     $materials = [];

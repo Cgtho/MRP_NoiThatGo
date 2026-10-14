@@ -55,9 +55,9 @@ try {
                     'SELECT maTP FROM THANHPHAM WHERE maTP = :maTP'
                 );
                 $bomStatement = $pdo->prepare(
-                    'SELECT bom.maNVL, bom.soLuong, n.soLuong AS tonKho
+                    'SELECT bom.maNVL, bom.soLuong, COALESCE(n.soLuong, 0) AS tonKho
                      FROM CHITIETTHANHPHAM bom
-                     INNER JOIN NGUYENVATLIEU n ON n.maNVL = bom.maNVL
+                     LEFT JOIN NGUYENVATLIEUXUONG n ON n.maNVL = bom.maNVL
                      WHERE bom.maTP = :maTP'
                 );
                 $requiredMaterials = [];
@@ -119,10 +119,10 @@ try {
             );
             $completionDetails->execute(['maYC' => $completeCode]);
             $requiredMaterialsStatement = $pdo->prepare(
-                'SELECT bom.maNVL, SUM(bom.soLuong * ct.soLuong) AS soLuongCan, n.soLuong AS tonKho
+                'SELECT bom.maNVL, SUM(bom.soLuong * ct.soLuong) AS soLuongCan, COALESCE(n.soLuong, 0) AS tonKho
                  FROM CHITIETYEUCAU ct
                  INNER JOIN CHITIETTHANHPHAM bom ON bom.maTP = ct.maTP
-                 INNER JOIN NGUYENVATLIEU n ON n.maNVL = bom.maNVL
+                 LEFT JOIN NGUYENVATLIEUXUONG n ON n.maNVL = bom.maNVL
                  WHERE ct.maYC = :maYC
                  GROUP BY bom.maNVL, n.soLuong
                  FOR UPDATE'
@@ -140,7 +140,7 @@ try {
             }
 
             $decreaseMaterialStock = $pdo->prepare(
-                'UPDATE NGUYENVATLIEU
+                'UPDATE NGUYENVATLIEUXUONG
                  SET soLuong = soLuong - :soLuong
                  WHERE maNVL = :maNVL AND soLuong >= :soLuongKiemTra'
             );
@@ -187,13 +187,13 @@ try {
 
             $missingMaterialsStatement = $pdo->prepare(
                 'SELECT bom.maNVL,
-                        CEIL(SUM(bom.soLuong * ct.soLuong) - n.soLuong) AS soLuongThieu
+                        CEIL(SUM(bom.soLuong * ct.soLuong) - COALESCE(n.soLuong, 0)) AS soLuongThieu
                  FROM CHITIETYEUCAU ct
                  INNER JOIN CHITIETTHANHPHAM bom ON bom.maTP = ct.maTP
-                 INNER JOIN NGUYENVATLIEU n ON n.maNVL = bom.maNVL
+                 LEFT JOIN NGUYENVATLIEUXUONG n ON n.maNVL = bom.maNVL
                  WHERE ct.maYC = :maYC
                  GROUP BY bom.maNVL, n.soLuong
-                 HAVING SUM(bom.soLuong * ct.soLuong) > n.soLuong
+                 HAVING SUM(bom.soLuong * ct.soLuong) > COALESCE(n.soLuong, 0)
                  FOR UPDATE'
             );
             $missingMaterialsStatement->execute(['maYC' => $requestCode]);
@@ -278,11 +278,11 @@ try {
             continue;
         }
         $stockCheck = $pdo->prepare(
-            'SELECT bom.maNVL, SUM(bom.soLuong * ct.soLuong) AS requiredAmount,
-                    n.soLuong AS stockAmount
+                'SELECT bom.maNVL, SUM(bom.soLuong * ct.soLuong) AS requiredAmount,
+                    COALESCE(n.soLuong, 0) AS stockAmount
              FROM CHITIETYEUCAU ct
              INNER JOIN CHITIETTHANHPHAM bom ON bom.maTP = ct.maTP
-             INNER JOIN NGUYENVATLIEU n ON n.maNVL = bom.maNVL
+                 LEFT JOIN NGUYENVATLIEUXUONG n ON n.maNVL = bom.maNVL
              WHERE ct.maYC = :maYC'
              . ' GROUP BY bom.maNVL, n.soLuong'
         );
@@ -336,16 +336,17 @@ try {
         $selectedOrder = $detailRows[0] ?? null;
         if ($selectedOrder) {
             $bom = $pdo->prepare(
-                'SELECT bom.maNVL, n.tenNVL, dvt.tenDVT,
+                'SELECT bom.maNVL, nvl.tenNVL, dvt.tenDVT,
                         SUM(bom.soLuong) AS dinhMuc,
                         SUM(bom.soLuong * ct.soLuong) AS tongCan,
-                        n.soLuong AS tonKho
+                    COALESCE(n.soLuong, 0) AS tonKho
                  FROM CHITIETYEUCAU ct
                  INNER JOIN CHITIETTHANHPHAM bom ON bom.maTP = ct.maTP
-                 INNER JOIN NGUYENVATLIEU n ON n.maNVL = bom.maNVL
-                 INNER JOIN DONVITINH dvt ON dvt.maDVT = n.maDVT
+                 LEFT JOIN NGUYENVATLIEU nvl ON nvl.maNVL = bom.maNVL
+                 LEFT JOIN NGUYENVATLIEUXUONG n ON n.maNVL = bom.maNVL
+                 LEFT JOIN DONVITINH dvt ON dvt.maDVT = nvl.maDVT
                  WHERE ct.maYC = :maYC
-                 GROUP BY bom.maNVL, n.tenNVL, dvt.tenDVT, n.soLuong
+                 GROUP BY bom.maNVL, nvl.tenNVL, dvt.tenDVT, n.soLuong
                  ORDER BY bom.maNVL'
             );
             $bom->execute(['maYC' => $selectedCode]);

@@ -6,7 +6,11 @@ require_once '../includes/csrf.php';
 $canManageMasterData = (int) ($_SESSION['role'] ?? 1) === 0;
 $search = trim((string) ($_GET['search'] ?? ''));
 $requestedView = $_GET['view'] ?? 'materials';
-$view = in_array($requestedView, ['materials', 'products', 'units'], true) ? $requestedView : 'materials';
+$view = $requestedView === 'materials' ? 'warehouse_materials' : $requestedView;
+$view = in_array($view, ['warehouse_materials', 'workshop_materials', 'products', 'units'], true) ? $view : 'warehouse_materials';
+$materialTable = $view === 'workshop_materials' ? 'NGUYENVATLIEUXUONG' : 'NGUYENVATLIEU';
+$isMaterialView = in_array($view, ['warehouse_materials', 'workshop_materials'], true);
+$materialTitle = $view === 'workshop_materials' ? 'Tồn kho nguyên vật liệu xưởng hiện tại' : 'Tồn kho nguyên vật liệu kho hiện tại';
 $materials = [];
 $products = [];
 $units = [];
@@ -34,15 +38,25 @@ try {
         $stmt->execute($search !== '' ? ['search' => "%{$search}%"] : []);
         $units = $stmt->fetchAll();
     } else {
-        $sql = 'SELECT nvl.maNVL, nvl.tenNVL, dvt.tenDVT, nvl.soLuong
-                FROM NGUYENVATLIEU nvl
-                INNER JOIN DONVITINH dvt ON dvt.maDVT = nvl.maDVT';
-
-        if ($search !== '') {
-            $sql .= ' WHERE nvl.tenNVL LIKE :search';
+        if ($view === 'workshop_materials') {
+            $sql = 'SELECT master.maNVL, master.tenNVL, dvt.tenDVT,
+                           COALESCE(workshop.soLuong, 0) AS soLuong
+                    FROM NGUYENVATLIEU master
+                    LEFT JOIN NGUYENVATLIEUXUONG workshop ON workshop.maNVL = master.maNVL
+                    INNER JOIN DONVITINH dvt ON dvt.maDVT = master.maDVT';
+        } else {
+            $sql = 'SELECT nvl.maNVL, nvl.tenNVL, dvt.tenDVT, nvl.soLuong
+                    FROM NGUYENVATLIEU nvl
+                    INNER JOIN DONVITINH dvt ON dvt.maDVT = nvl.maDVT';
         }
 
-        $sql .= ' ORDER BY nvl.tenNVL ASC';
+        if ($search !== '') {
+            $sql .= $view === 'workshop_materials'
+                ? ' WHERE master.tenNVL LIKE :search'
+                : ' WHERE nvl.tenNVL LIKE :search';
+        }
+
+        $sql .= $view === 'workshop_materials' ? ' ORDER BY master.tenNVL ASC' : ' ORDER BY nvl.tenNVL ASC';
         $stmt = $pdo->prepare($sql);
         $stmt->execute($search !== '' ? ['search' => "%{$search}%"] : []);
         $materials = $stmt->fetchAll();
@@ -59,21 +73,21 @@ try {
         <div class="flex items-center gap-3">
             <div class="bg-amber-100 text-amber-600 p-2 rounded-lg text-xl"><i class="fa-solid fa-cubes-stacked"></i></div>
             <div>
-                <h2 class="text-xl font-bold text-slate-800">Tra Cứu Danh Mục Kho & Dữ Liệu Gốc (Master Data)</h2>
+                <h2 class="text-xl font-bold text-slate-800">Tra Cứu Danh Mục Kho & Dữ Liệu Gốc</h2>
             </div>
         </div>
     </div>
     <form id="inventorySearch" method="get" class="relative w-64">
         <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-sm"></i>
         <input type="hidden" name="view" value="<?= htmlspecialchars($view, ENT_QUOTES, 'UTF-8') ?>">
-        <input type="search" name="search" value="<?= htmlspecialchars($search, ENT_QUOTES, 'UTF-8') ?>" placeholder="<?= $view === 'products' ? 'Tìm kiếm tên thành phẩm...' : ($view === 'units' ? 'Tìm kiếm đơn vị tính...' : 'Tìm kiếm tên vật liệu...') ?>" class="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 shadow-sm">
+        <input type="search" name="search" value="<?= htmlspecialchars($search, ENT_QUOTES, 'UTF-8') ?>" placeholder="<?= $view === 'products' ? 'Tìm kiếm tên thành phẩm...' : ($view === 'units' ? 'Tìm kiếm đơn vị tính...' : 'Tìm kiếm tên vật liệu...') ?>" class="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 shadow-sm" autocomplete="off">
     </form>
 </div>
 
 <!-- Tabs Điều Hướng -->
 <div class="flex items-center gap-2 mb-6 border-b border-slate-200 pb-2">
-    <a href="inventory.php?view=materials" class="<?= $view === 'materials' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800' ?> text-[13px] font-medium px-4 py-2 rounded-lg flex items-center gap-2 transition">
-        <i class="fa-solid fa-cubes"></i> Nguyên Vật Liệu
+    <a href="inventory.php?view=warehouse_materials" class="<?= $isMaterialView ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800' ?> text-[13px] font-medium px-4 py-2 rounded-lg flex items-center gap-2 transition">
+        <i class="fa-solid fa-cubes"></i> Nguyên vật liệu
     </a>
     <a href="inventory.php?view=products" class="<?= $view === 'products' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800' ?> text-[13px] font-medium px-4 py-2 rounded-lg flex items-center gap-2 transition">
         <i class="fa-solid fa-box"></i> Thành Phẩm
@@ -83,15 +97,27 @@ try {
     </a>
 </div>
 
+<?php if ($isMaterialView): ?>
+    <div class="flex items-center gap-2 mb-6 border-b border-slate-200 pb-2">
+        <a href="inventory.php?view=warehouse_materials" class="<?= $view === 'warehouse_materials' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-slate-800' ?> border text-xs font-medium px-4 py-2 rounded-lg transition" aria-current="<?= $view === 'warehouse_materials' ? 'page' : 'false' ?>">
+            <i class="fa-solid fa-warehouse mr-1"></i> Nguyên vật liệu kho
+        </a>
+        <a href="inventory.php?view=workshop_materials" class="<?= $view === 'workshop_materials' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-slate-800' ?> border text-xs font-medium px-4 py-2 rounded-lg transition" aria-current="<?= $view === 'workshop_materials' ? 'page' : 'false' ?>">
+            <i class="fa-solid fa-industry mr-1"></i> Nguyên vật liệu xưởng
+        </a>
+        <?php if ($canManageMasterData): ?>
+            <button id="openAddMaterialModal" type="button" class="ml-auto bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition flex items-center gap-2">
+                <i class="fa-solid fa-plus"></i> Thêm nguyên vật liệu
+            </button>
+        <?php endif; ?>
+    </div>
+<?php endif; ?>
+
 <!-- Bảng Master Data -->
 <div class="flex min-h-0 flex-1 flex-col bg-white border border-slate-200 rounded-xl shadow-sm p-6">
     <div class="flex justify-between items-end mb-4">
         <h3 class="font-bold text-slate-800"><?= $view === 'products' ? 'Tồn kho thành phẩm hiện tại' : ($view === 'units' ? 'Danh sách đơn vị tính' : 'Tồn kho nguyên vật liệu hiện tại') ?></h3>
-        <?php if ($view === 'materials' && $canManageMasterData): ?>
-            <button id="openAddMaterialModal" type="button" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition flex items-center gap-2">
-                <i class="fa-solid fa-plus"></i> Thêm nguyên vật liệu
-            </button>
-        <?php elseif ($view === 'units' && $canManageMasterData): ?>
+        <?php if ($view === 'units' && $canManageMasterData): ?>
             <button id="openAddUnitModal" type="button" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition flex items-center gap-2">
                 <i class="fa-solid fa-plus"></i> Thêm đơn vị tính
             </button>
@@ -116,14 +142,15 @@ try {
                     </tr>
                 <?php endif; ?>
             </thead>
-            <tbody class="divide-y divide-slate-100 text-xs">
+            <tbody id="inventoryRows" class="divide-y divide-slate-100 text-xs">
+                <tr id="inventoryFilterEmptyRow" class="hidden"><td colspan="<?= $view === 'units' ? '3' : '4' ?>" class="px-4 py-8 text-center text-slate-500">Không tìm thấy kết quả phù hợp.</td></tr>
                 <?php if ($inventoryError): ?>
                     <tr><td colspan="<?= $view === 'units' ? '3' : '4' ?>" class="px-4 py-8 text-center text-red-600"><?= htmlspecialchars($inventoryError, ENT_QUOTES, 'UTF-8') ?></td></tr>
-                <?php elseif (($view === 'products' && !$products) || ($view === 'units' && !$units) || ($view === 'materials' && !$materials)): ?>
-                    <tr><td colspan="<?= $view === 'units' ? '3' : '4' ?>" class="px-4 py-8 text-center text-slate-500">Không tìm thấy <?= $view === 'products' ? 'thành phẩm' : ($view === 'units' ? 'đơn vị tính' : 'nguyên vật liệu') ?>.</td></tr>
+                <?php elseif (($view === 'products' && !$products) || ($view === 'units' && !$units) || ($isMaterialView && !$materials)): ?>
+                    <tr id="inventoryEmptyRow"><td colspan="<?= $view === 'units' ? '3' : '4' ?>" class="px-4 py-8 text-center text-slate-500">Không tìm thấy <?= $view === 'products' ? 'thành phẩm' : ($view === 'units' ? 'đơn vị tính' : 'nguyên vật liệu') ?>.</td></tr>
                 <?php elseif ($view === 'units'): ?>
                     <?php foreach ($units as $unit): ?>
-                        <tr class="hover:bg-slate-50 transition">
+                        <tr data-inventory-row class="hover:bg-slate-50 transition">
                             <td class="px-4 py-3 text-slate-700"><?= htmlspecialchars($unit['tenDVT'], ENT_QUOTES, 'UTF-8') ?></td>
                             <td class="px-4 py-3 text-right font-bold text-blue-600 text-sm"><?= number_format((int) $unit['soLuongNVL']) ?></td>
                             <td class="px-4 py-3 text-center">
@@ -138,7 +165,7 @@ try {
                 <?php elseif ($view === 'products'): ?>
                     <?php foreach ($products as $product): ?>
                         <?php $isLowStock = (int) $product['soLuong'] < 10; ?>
-                        <tr class="hover:bg-slate-50 transition">
+                        <tr data-inventory-row class="hover:bg-slate-50 transition">
                             <td class="px-4 py-3 text-slate-700"><?= htmlspecialchars($product['tenTP'], ENT_QUOTES, 'UTF-8') ?></td>
                             <td class="px-4 py-3 text-slate-500 text-center"><?= htmlspecialchars($product['donViTinh'], ENT_QUOTES, 'UTF-8') ?></td>
                             <td class="px-4 py-3 text-right font-bold text-blue-600 text-sm"><?= number_format((int) $product['soLuong']) ?> <?= htmlspecialchars($product['donViTinh'], ENT_QUOTES, 'UTF-8') ?></td>
@@ -154,7 +181,7 @@ try {
                 <?php else: ?>
                     <?php foreach ($materials as $material): ?>
                         <?php $isLowStock = (int) $material['soLuong'] < 100; ?>
-                        <tr class="hover:bg-slate-50 transition">
+                        <tr data-inventory-row class="hover:bg-slate-50 transition">
                             <td class="px-4 py-3 text-slate-700"><?= htmlspecialchars($material['tenNVL'], ENT_QUOTES, 'UTF-8') ?></td>
                             <td class="px-4 py-3 text-slate-500 text-center"><?= htmlspecialchars($material['tenDVT'], ENT_QUOTES, 'UTF-8') ?></td>
                             <td class="px-4 py-3 text-right font-bold text-blue-600 text-sm"><?= number_format((int) $material['soLuong']) ?> <?= htmlspecialchars($material['tenDVT'], ENT_QUOTES, 'UTF-8') ?></td>
@@ -173,7 +200,7 @@ try {
     </div>
 </div>
 
-<?php if ($view === 'materials' && $canManageMasterData): ?>
+<?php if ($isMaterialView && $canManageMasterData): ?>
     <div id="addMaterialModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 items-center justify-center px-4">
         <div class="bg-white rounded-xl w-full max-w-md shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="addMaterialTitle">
             <div class="flex items-center justify-between border-b border-slate-200 px-5 py-4">
@@ -233,7 +260,7 @@ try {
                     addMaterialMessage.className = 'mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600';
                     return;
                 }
-                window.location.href = 'inventory.php?view=materials';
+                window.location.href = 'inventory.php?view=warehouse_materials';
             } catch (error) {
                 addMaterialMessage.textContent = 'Không thể kết nối máy chủ.';
                 addMaterialMessage.className = 'mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600';
@@ -300,5 +327,28 @@ try {
         });
     </script>
 <?php endif; ?>
+
+<script>
+    const inventorySearchInput = document.querySelector('#inventorySearch input[name="search"]');
+    const inventoryRows = [...document.querySelectorAll('[data-inventory-row]')];
+    const inventoryEmptyRow = document.getElementById('inventoryEmptyRow');
+    const inventoryFilterEmptyRow = document.getElementById('inventoryFilterEmptyRow');
+
+    inventorySearchInput?.addEventListener('input', () => {
+        const searchValue = inventorySearchInput.value.trim().toLocaleLowerCase();
+        let visibleRows = 0;
+
+        inventoryRows.forEach((row) => {
+            const matches = row.textContent.toLocaleLowerCase().includes(searchValue);
+            row.classList.toggle('hidden', !matches);
+            visibleRows += matches ? 1 : 0;
+        });
+
+        if (inventoryEmptyRow) {
+            inventoryEmptyRow.classList.toggle('hidden', visibleRows > 0 || searchValue === '');
+        }
+        inventoryFilterEmptyRow?.classList.toggle('hidden', visibleRows > 0 || searchValue === '');
+    });
+</script>
 
 <?php require_once '../includes/footer.php'; ?>

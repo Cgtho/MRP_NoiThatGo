@@ -46,7 +46,7 @@ try {
     }
 
     $detailStatement = $pdo->prepare(
-        'SELECT ct.maNVL, ct.soLuong, nvl.soLuong AS tonKho
+        'SELECT ct.maNVL, ct.soLuong, nvl.tenNVL, nvl.maDVT, nvl.soLuong AS tonKho
          FROM CHITIETPHIEUXUATNVL ct
          INNER JOIN NGUYENVATLIEU nvl ON nvl.maNVL = ct.maNVL
          WHERE ct.maPX = :maPX
@@ -69,16 +69,47 @@ try {
         }
     }
 
-    // Phiếu cấp vật tư cho lệnh sản xuất chỉ xác nhận việc cấp vật tư.
-    // Tồn kho sẽ được trừ một lần khi nhân viên hoàn thành lệnh.
-    if ((int) $export['loaiPhieu'] === 0) {
-        $updateStock = $pdo->prepare(
-            'UPDATE NGUYENVATLIEU SET soLuong = soLuong - :soLuong WHERE maNVL = :maNVL'
-        );
-        foreach ($details as $detail) {
-            $updateStock->execute([
-                'soLuong' => (int) $detail['soLuong'],
+    $decreaseWarehouseStock = $pdo->prepare(
+        'UPDATE NGUYENVATLIEU
+         SET soLuong = soLuong - :soLuong
+         WHERE maNVL = :maNVL AND soLuong >= :soLuongKiemTra'
+    );
+    $workshopStock = $pdo->prepare(
+        'SELECT maNVL FROM NGUYENVATLIEUXUONG WHERE maNVL = :maNVL FOR UPDATE'
+    );
+    $insertWorkshopStock = $pdo->prepare(
+        'INSERT INTO NGUYENVATLIEUXUONG (maNVL, tenNVL, maDVT, soLuong)
+         VALUES (:maNVL, :tenNVL, :maDVT, :soLuong)'
+    );
+    $increaseWorkshopStock = $pdo->prepare(
+        'UPDATE NGUYENVATLIEUXUONG
+         SET soLuong = soLuong + :soLuong
+         WHERE maNVL = :maNVL'
+    );
+
+    foreach ($details as $detail) {
+        $quantity = (int) $detail['soLuong'];
+        $decreaseWarehouseStock->execute([
+            'soLuong' => $quantity,
+            'maNVL' => $detail['maNVL'],
+            'soLuongKiemTra' => $quantity,
+        ]);
+        if ($decreaseWarehouseStock->rowCount() !== 1) {
+            throw new RuntimeException('Không thể trừ tồn kho nguyên vật liệu ' . $detail['maNVL'] . '.');
+        }
+
+        $workshopStock->execute(['maNVL' => $detail['maNVL']]);
+        if ($workshopStock->fetch()) {
+            $increaseWorkshopStock->execute([
+                'soLuong' => $quantity,
                 'maNVL' => $detail['maNVL'],
+            ]);
+        } else {
+            $insertWorkshopStock->execute([
+                'maNVL' => $detail['maNVL'],
+                'tenNVL' => $detail['tenNVL'],
+                'maDVT' => $detail['maDVT'],
+                'soLuong' => $quantity,
             ]);
         }
     }
@@ -98,7 +129,7 @@ try {
     }
 
     $pdo->commit();
-    echo json_encode(['success' => true, 'message' => 'Đã duyệt phiếu và trừ tồn kho.']);
+    echo json_encode(['success' => true, 'message' => 'Đã duyệt phiếu, trừ kho tổng và cộng kho xưởng.']);
 } catch (Throwable $exception) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
