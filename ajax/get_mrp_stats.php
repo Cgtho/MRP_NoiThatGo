@@ -20,7 +20,7 @@ if (!isset($_SESSION['current_user'], $_SESSION['role'])) {
     exit;
 }
 
-require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../config/db.php';
 
 try {
     // 1. Nhu cầu vật tư theo từng mã NVL cho các lệnh sản xuất đang hoạt động.

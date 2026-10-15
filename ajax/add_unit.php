@@ -14,7 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../config/db.php';
 
 $unitName = trim((string) ($_POST['tenDVT'] ?? ''));
 if ($unitName === '' || mb_strlen($unitName) > 10) {

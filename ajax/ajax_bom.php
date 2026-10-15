@@ -8,7 +8,7 @@ if (!isset($_SESSION['current_user'], $_SESSION['user_name'], $_SESSION['role'])
     exit;
 }
 
-require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../config/db.php';
 
 header('Content-Type: application/json');
 

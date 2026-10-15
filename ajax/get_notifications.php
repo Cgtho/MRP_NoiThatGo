@@ -8,7 +8,7 @@ if (!isset($_SESSION['current_user'], $_SESSION['role'])) {
     exit;
 }
 
-require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../config/db.php';
 
 $isManager = (int) $_SESSION['role'] === 0;
 $currentUser = (string) $_SESSION['current_user'];
