@@ -13,14 +13,13 @@ try {
     if ($isManager) {
         $stmt = $pdo->prepare(
             'SELECT
-                (SELECT COUNT(*) FROM PHIEUXUATNVL WHERE maQL = :maQL_NVL AND trangThai = 0)
+                (SELECT COUNT(*) FROM PHIEUXUATNVL WHERE trangThai = 0)
                 +
-                (SELECT COUNT(*) FROM PHIEUXUATTP WHERE maQL = :maQL_TP AND trangThai = 0)'
+                (SELECT COUNT(*) FROM PHIEUXUATTP WHERE trangThai = 0)'
         );
-        $stmt->execute(['maQL_NVL' => $_SESSION['current_user'], 'maQL_TP' => $_SESSION['current_user']]);
+        $stmt->execute();
     } else {
-        $stmt = $pdo->prepare('SELECT COUNT(*) FROM YEUCAU WHERE maNV = :maNV');
-        $stmt->execute(['maNV' => $_SESSION['current_user']]);
+        $stmt = $pdo->query('SELECT COUNT(*) FROM YEUCAU WHERE trangThai <> 2');
     }
     $pendingTasks = (int) $stmt->fetchColumn();
 
@@ -29,18 +28,7 @@ try {
     $stats['productKinds'] = (int) $pdo->query('SELECT COUNT(*) FROM THANHPHAM WHERE trangThai = 1')->fetchColumn();
     $stats['productQty'] = (int) $pdo->query('SELECT COALESCE(SUM(soLuong), 0) FROM THANHPHAM WHERE trangThai = 1')->fetchColumn();
     $stats['orders'] = (int) $pdo->query('SELECT COUNT(*) FROM YEUCAU')->fetchColumn();
-    if ($isManager) {
-        $stats['pendingExports'] = $pendingTasks;
-    } else {
-        $stmt = $pdo->prepare(
-            'SELECT
-                (SELECT COUNT(*) FROM PHIEUXUATNVL WHERE maNV = :maNV_nvl AND trangThai = 0)
-                +
-                (SELECT COUNT(*) FROM PHIEUXUATTP WHERE maNV = :maNV_tp AND trangThai = 0)'
-        );
-        $stmt->execute(['maNV_nvl' => $_SESSION['current_user'], 'maNV_tp' => $_SESSION['current_user']]);
-        $stats['pendingExports'] = (int) $stmt->fetchColumn();
-    }
+    $stats['pendingExports'] = $pendingTasks;
 
     // Quản lý xem toàn bộ phiếu chờ; nhân viên chỉ xem phiếu do mình lập.
     $exportOwnerFilterNvl = $isManager ? '1 = 1' : 'p.maNV = :employeeNvl';
@@ -59,15 +47,15 @@ try {
          LEFT JOIN CHITIETPHIEUXUATTP ct ON ct.maPX = p.maPX
          WHERE p.trangThai = 0 AND {$exportOwnerFilterTp}
          GROUP BY p.maPX, p.ngayXuat, p.maNV, nv.hoTen
-         ORDER BY ngayXuat DESC LIMIT 5"
+         ORDER BY ngayXuat DESC"
     );
     $pendingStmt->execute($isManager ? [] : [
         'employeeNvl' => $_SESSION['current_user'],
         'employeeTp' => $_SESSION['current_user'],
     ]);
-    $pendingExports = $pendingStmt->fetchAll();
+    $pendingExports = $isManager ? $pendingStmt->fetchAll() : [];
 
-    $productionOrders = $pdo->query(
+    $productionStmt = $pdo->query(
         "SELECT yc.maYC, yc.ngayYC, nv.hoTen,
                 GROUP_CONCAT(CONCAT(tp.tenTP, ' (', ct.soLuong, ' ', tp.donViTinh, ')') SEPARATOR ', ') AS sanPham
          FROM YEUCAU yc
@@ -76,7 +64,8 @@ try {
          LEFT JOIN THANHPHAM tp ON tp.maTP = ct.maTP
          GROUP BY yc.maYC, yc.ngayYC, nv.hoTen
          ORDER BY yc.ngayYC DESC LIMIT 5"
-    )->fetchAll();
+    );
+    $productionOrders = $productionStmt->fetchAll();
 } catch (PDOException $e) {
     $dashboardError = 'Không thể tải dữ liệu tổng quan từ cơ sở dữ liệu.';
 }
@@ -108,10 +97,12 @@ function dashboardDate(string $date): string
             </p>
         <?php endif; ?>
     </div>
-    <button class="absolute top-6 right-6 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg
-     font-medium shadow-md transition flex items-center gap-2 z-10" onclick="window.location.href='production_orders.php'">
-        <i class="fa-solid fa-plus"></i> Tạo Lệnh Sản Xuất
-    </button>
+    <?php if ($isManager): ?>
+        <button class="absolute top-6 right-6 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg
+         font-medium shadow-md transition flex items-center gap-2 z-10" onclick="window.location.href='production_orders.php'">
+            <i class="fa-solid fa-plus"></i> Tạo Lệnh Sản Xuất
+        </button>
+    <?php endif; ?>
     <!-- Background Decoration -->
     <div class="absolute -right-10 -top-20 opacity-20"><i class="fa-solid fa-cubes text-9xl"></i></div>
 </div>
@@ -147,14 +138,14 @@ function dashboardDate(string $date): string
     <!-- Card 3 (Nổi bật) -->
     <div class="bg-amber-50 p-5 rounded-xl border border-amber-200 shadow-sm flex flex-col justify-between
     cursor-pointer transition-all duration-200 hover:shadow-md hover:border-yellow-300 hover:-translate-y-1"
-    onclick="window.location.href='export_materials.php'">
+    onclick="window.location.href='<?= $isManager ? 'export_materials.php' : 'production_orders.php' ?>'">
         <div class="flex justify-between items-start mb-2">
-            <div class="text-xs font-semibold text-amber-700">XUẤT NVL CHỜ DUYỆT</div>
-            <i class="fa-regular fa-clock text-amber-500"></i>
+            <div class="text-xs font-semibold text-amber-700"><?= $isManager ? 'XUẤT NVL CHỜ DUYỆT' : 'LỆNH SẢN XUẤT CẦN XỬ LÝ' ?></div>
+            <i class="fa-regular <?= $isManager ? 'fa-clock' : 'fa-clipboard' ?> text-amber-500"></i>
         </div>
         <div>
             <div class="text-2xl font-bold text-amber-700"><?= number_format($stats['pendingExports']) ?> <span class="text-sm font-normal">phiếu yêu cầu</span></div>
-            <div class="text-xs text-amber-600 mt-1"><?= $isManager ? 'Nhân viên đang đợi duyệt cấp vật tư' : 'Phiếu của bạn đang chờ xử lý' ?></div>
+            <div class="text-xs text-amber-600 mt-1"><?= $isManager ? 'Nhân viên đang đợi duyệt cấp vật tư' : 'Lệnh của bạn đang chờ xử lý' ?></div>
         </div>
     </div>
     <!-- Card 4 -->
@@ -173,10 +164,11 @@ function dashboardDate(string $date): string
 </div>
 
 <!-- Khối Danh sách Phiếu chờ duyệt & Lệnh sản xuất -->
-<div class="grid grid-cols-2 gap-6 mb-6">
+<div class="<?= $isManager ? 'grid grid-cols-2' : '' ?> gap-6 mb-6">
     
     <!-- CỘT TRÁI: Phiếu Chờ Phê Duyệt -->
-    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-4">
+    <?php if ($isManager): ?>
+        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-4">
         <div class="flex justify-between items-center mb-1">
             <h3 class="font-bold text-slate-800 flex items-center gap-2">
                 <i class="fa-regular fa-clock text-amber-500"></i> Phiếu Chờ Phê Duyệt (<?= count($pendingExports) ?>)
@@ -184,31 +176,34 @@ function dashboardDate(string $date): string
             <span class="text-sm text-slate-400"><?= $isManager ? 'Cần bạn phê duyệt' : 'Đang chờ xử lý' ?></span>
         </div>
 
-        <?php if (!$pendingExports): ?>
-            <div class="rounded-lg border border-slate-200 p-4 text-sm text-slate-500">Không có phiếu đang chờ xử lý.</div>
-        <?php else: ?>
-            <?php foreach ($pendingExports as $export): ?>
-                <?php $isMaterialExport = $export['loai'] === 'NVL'; ?>
-                <div class="border <?= $isMaterialExport ? 'border-amber-200' : 'border-blue-200' ?> rounded-lg p-4 flex justify-between items-center bg-white shadow-sm">
-                    <div>
-                        <div class="flex items-center gap-2 mb-1.5">
-                            <span class="font-bold <?= $isMaterialExport ? 'text-amber-700' : 'text-blue-700' ?>"><?= htmlspecialchars($export['maPX'], ENT_QUOTES, 'UTF-8') ?></span>
-                            <span class="<?= $isMaterialExport ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800' ?> text-[11px] font-medium px-2 py-0.5 rounded">Xuất <?= $isMaterialExport ? 'nguyên vật liệu' : 'thành phẩm' ?></span>
+        <div class="max-h-[520px] space-y-3 overflow-y-auto pr-2 scrollbar-custom">
+            <?php if (!$pendingExports): ?>
+                <div class="rounded-lg border border-slate-200 p-4 text-sm text-slate-500">Không có phiếu đang chờ xử lý.</div>
+            <?php else: ?>
+                <?php foreach ($pendingExports as $export): ?>
+                    <?php $isMaterialExport = $export['loai'] === 'NVL'; ?>
+                    <div class="border <?= $isMaterialExport ? 'border-amber-200' : 'border-blue-200' ?> rounded-lg p-4 flex justify-between items-center bg-white shadow-sm">
+                        <div>
+                            <div class="flex items-center gap-2 mb-1.5">
+                                <span class="font-bold <?= $isMaterialExport ? 'text-amber-700' : 'text-blue-700' ?>"><?= htmlspecialchars($export['maPX'], ENT_QUOTES, 'UTF-8') ?></span>
+                                <span class="<?= $isMaterialExport ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800' ?> text-[11px] font-medium px-2 py-0.5 rounded">Xuất <?= $isMaterialExport ? 'nguyên vật liệu' : 'thành phẩm' ?></span>
+                            </div>
+                            <div class="text-sm text-slate-700 mb-1">Số dòng chi tiết: <?= (int) $export['soDong'] ?></div>
+                            <div class="text-[11px] text-slate-400">Ngày tạo: <?= htmlspecialchars(dashboardDate((string) $export['ngayXuat']), ENT_QUOTES, 'UTF-8') ?> &bull; Người tạo: <?= htmlspecialchars($export['hoTen'], ENT_QUOTES, 'UTF-8') ?></div>
                         </div>
-                        <div class="text-sm text-slate-700 mb-1">Số dòng chi tiết: <?= (int) $export['soDong'] ?></div>
-                        <div class="text-[11px] text-slate-400">Ngày tạo: <?= htmlspecialchars(dashboardDate((string) $export['ngayXuat']), ENT_QUOTES, 'UTF-8') ?> &bull; Người tạo: <?= htmlspecialchars($export['hoTen'], ENT_QUOTES, 'UTF-8') ?></div>
+                        <a href="<?= $isMaterialExport ? 'export_materials.php' : 'export_products.php' ?>?maPX=<?= urlencode((string) $export['maPX']) ?>"
+                        class="<?= $isMaterialExport ? 'bg-[#e27a13] hover:bg-[#c96a0e]' : 'bg-blue-600 hover:bg-blue-700' ?> text-white text-sm font-medium px-4 py-2 rounded-lg transition shrink-0 shadow-sm">
+                            <?= $isManager ? 'Duyệt ngay' : 'Xem phiếu' ?>
+                        </a>
                     </div>
-                    <a href="<?= $isMaterialExport ? 'export_materials.php' : 'export_products.php' ?>?maPX=<?= urlencode((string) $export['maPX']) ?>"
-                    class="<?= $isMaterialExport ? 'bg-[#e27a13] hover:bg-[#c96a0e]' : 'bg-blue-600 hover:bg-blue-700' ?> text-white text-sm font-medium px-4 py-2 rounded-lg transition shrink-0 shadow-sm">
-                        <?= $isManager ? 'Duyệt ngay' : 'Xem phiếu' ?>
-                    </a>
-                </div>
-            <?php endforeach; ?>
-        <?php endif; ?>
-    </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+        </div>
+    <?php endif; ?>
 
     <!-- CỘT PHẢI: Lệnh Sản Xuất Hiện Có -->
-    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-4">
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-4 <?= $isManager ? '' : 'w-full' ?>">
         <div class="flex justify-between items-center mb-1">
             <h3 class="font-bold text-slate-800 flex items-center gap-2">
                 <i class="fa-regular fa-clipboard text-indigo-500"></i> Lệnh Sản Xuất Hiện Có (<?= count($productionOrders) ?>)
@@ -217,23 +212,23 @@ function dashboardDate(string $date): string
         </div>
 
         <?php if (!$productionOrders): ?>
-            <div class="rounded-lg border border-slate-200 p-4 text-sm text-slate-500">Chưa có lệnh sản xuất.</div>
+                <div class="rounded-lg border border-slate-200 p-4 text-sm text-slate-500">Chưa có lệnh sản xuất.</div>
         <?php else: ?>
             <?php foreach ($productionOrders as $order): ?>
-                <div class="border border-slate-200 rounded-lg p-4 flex justify-between items-center bg-white shadow-sm">
-                    <div>
-                        <div class="flex items-center gap-2 mb-1.5">
-                            <span class="font-bold text-slate-800"><?= htmlspecialchars($order['maYC'], ENT_QUOTES, 'UTF-8') ?></span>
-                            <span class="bg-indigo-100 text-indigo-700 text-[11px] font-medium px-2 py-0.5 rounded">Đã tạo</span>
+                    <div class="border border-slate-200 rounded-lg p-4 flex justify-between items-center bg-white shadow-sm">
+                        <div>
+                            <div class="flex items-center gap-2 mb-1.5">
+                                <span class="font-bold text-slate-800"><?= htmlspecialchars($order['maYC'], ENT_QUOTES, 'UTF-8') ?></span>
+                                <span class="bg-indigo-100 text-indigo-700 text-[11px] font-medium px-2 py-0.5 rounded">Đã tạo</span>
+                            </div>
+                            <div class="text-sm text-slate-700 mb-1"><?= htmlspecialchars($order['sanPham'] ?: 'Chưa có sản phẩm chi tiết', ENT_QUOTES, 'UTF-8') ?></div>
+                            <div class="text-[11px] text-slate-400">Ngày tạo: <?= htmlspecialchars(dashboardDate((string) $order['ngayYC']), ENT_QUOTES, 'UTF-8') ?> &bull; Người yêu cầu: <?= htmlspecialchars($order['hoTen'], ENT_QUOTES, 'UTF-8') ?></div>
                         </div>
-                        <div class="text-sm text-slate-700 mb-1"><?= htmlspecialchars($order['sanPham'] ?: 'Chưa có sản phẩm chi tiết', ENT_QUOTES, 'UTF-8') ?></div>
-                        <div class="text-[11px] text-slate-400">Ngày tạo: <?= htmlspecialchars(dashboardDate((string) $order['ngayYC']), ENT_QUOTES, 'UTF-8') ?> &bull; Người yêu cầu: <?= htmlspecialchars($order['hoTen'], ENT_QUOTES, 'UTF-8') ?></div>
+                        <button class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium px-4 py-2 rounded-lg transition shrink-0 border border-slate-200"
+                        onclick="window.location.href='production_orders.php'">
+                            Kiểm tra NVL
+                        </button>
                     </div>
-                    <button class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium px-4 py-2 rounded-lg transition shrink-0 border border-slate-200"
-                    onclick="window.location.href='production_orders.php'">
-                        Kiểm tra NVL
-                    </button>
-                </div>
             <?php endforeach; ?>
         <?php endif; ?>
     </div>

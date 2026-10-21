@@ -43,36 +43,25 @@ try {
     } else {
         $queries = [
             [
-                'sql' => 'SELECT maPX AS code, ngayXuat AS createdAt
-                         FROM PHIEUXUATNVL
-                         WHERE trangThai = 0 AND maNV = :maNV
-                         ORDER BY ngayXuat DESC, maPX DESC',
-                'title' => 'Phiếu xuất NVL đang chờ duyệt',
-                'message' => 'Phiếu xuất nguyên vật liệu của bạn đang được xử lý.',
-                'href' => '../views/export_materials.php?status=pending&maPX=',
-                'icon' => 'fa-dolly',
-                'color' => 'text-amber-500',
-            ],
-            [
-                'sql' => 'SELECT maPX AS code, ngayXuat AS createdAt
-                         FROM PHIEUXUATTP
-                         WHERE trangThai = 0 AND maNV = :maNV
-                         ORDER BY ngayXuat DESC, maPX DESC',
-                'title' => 'Phiếu xuất thành phẩm đang chờ duyệt',
-                'message' => 'Phiếu xuất thành phẩm của bạn đang được xử lý.',
-                'href' => '../views/export_products.php?status=pending&maPX=',
-                'icon' => 'fa-truck-fast',
-                'color' => 'text-sky-500',
+                'sql' => 'SELECT maYC AS code, ngayYC AS createdAt
+                         FROM YEUCAU
+                         WHERE trangThai <> 2
+                         ORDER BY ngayYC DESC, maYC DESC',
+                'title' => 'Lệnh sản xuất cần xử lý',
+                'message' => 'Bạn có lệnh sản xuất cần kiểm tra hoặc thực hiện.',
+                'href' => '../views/production_orders.php?maYC=',
+                'icon' => 'fa-clipboard-list',
+                'color' => 'text-indigo-500',
             ],
         ];
     }
 
     foreach ($queries as $query) {
         $statement = $pdo->prepare($query['sql']);
-        if ($isManager) {
-            $statement->execute();
-        } else {
+        if (!$isManager && strpos($query['sql'], ':maNV') !== false) {
             $statement->execute(['maNV' => $currentUser]);
+        } else {
+            $statement->execute();
         }
 
         foreach ($statement->fetchAll() as $row) {

@@ -260,7 +260,7 @@ $canReject = $isManager && $selectedExport !== null && $selectedStatus === 0;
     <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert"><?= $escape($errorMessage) ?></div>
 <?php endif; ?>
 
-<div class="flex flex-wrap items-center justify-between gap-3 mb-4 border-b border-slate-200 pb-2">
+<div class="flex flex-wrap items-center gap-2 mb-4 border-b border-slate-200 pb-2">
     <?php
     $filters = [
         'all' => ['label' => 'Tất cả', 'count' => $allCount, 'icon' => ''],
@@ -278,7 +278,7 @@ $canReject = $isManager && $selectedExport !== null && $selectedStatus === 0;
         </a>
     <?php endforeach; ?>
 
-    <form method="get" class="flex items-center gap-2" role="search">
+    <form method="get" class="ml-auto flex items-center gap-2" role="search">
         <input type="hidden" name="status" value="<?= $escape($statusFilter) ?>">
         <div class="relative">
             <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i>

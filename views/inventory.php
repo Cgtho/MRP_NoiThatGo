@@ -6,7 +6,6 @@ require_once '../includes/csrf.php';
 $canManageMasterData = (int) ($_SESSION['role'] ?? 1) === 0;
 $search = trim((string) ($_GET['search'] ?? ''));
 $statusFilter = (string) ($_GET['status'] ?? 'active');
-$statusFilter = $canManageMasterData ? $statusFilter : 'active';
 $statusFilter = in_array($statusFilter, ['active', 'hidden', 'all'], true) ? $statusFilter : 'active';
 $statusCondition = $statusFilter === 'active' ? ' = 1' : ($statusFilter === 'hidden' ? ' = 0' : ' IN (0, 1)');
 $requestedView = $_GET['view'] ?? 'materials';
@@ -91,7 +90,7 @@ try {
         <input type="hidden" name="status" value="<?= htmlspecialchars($statusFilter, ENT_QUOTES, 'UTF-8') ?>">
         <input type="search" name="search" value="<?= htmlspecialchars($search, ENT_QUOTES, 'UTF-8') ?>" placeholder="<?= $view === 'products' ? 'Tìm kiếm tên thành phẩm...' : ($view === 'units' ? 'Tìm kiếm đơn vị tính...' : 'Tìm kiếm tên vật liệu...') ?>" class="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 shadow-sm" autocomplete="off">
     </form>
-    <?php if ($canManageMasterData && $view !== 'units'): ?>
+    <?php if ($view !== 'units'): ?>
         <select id="masterStatusFilter" class="border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-600" aria-label="Lọc trạng thái">
             <option value="active" <?= $statusFilter === 'active' ? 'selected' : '' ?>>Đang hiển thị</option>
             <option value="hidden" <?= $statusFilter === 'hidden' ? 'selected' : '' ?>>Đang ẩn</option>
@@ -155,6 +154,7 @@ try {
                         <th class="px-4 py-3 border-b border-slate-200 w-48 text-center">Đơn Vị Tính</th>
                         <th class="px-4 py-3 border-b border-slate-200 w-48 text-right">Số Lượng Tồn Kho</th>
                         <th class="px-4 py-3 border-b border-slate-200 w-40 text-center">Cảnh Báo Dự Trữ</th>
+                        <th class="px-4 py-3 border-b border-slate-200 w-32 text-center">Trạng Thái</th>
                         <?php if ($canManageMasterData): ?>
                             <th class="px-4 py-3 border-b border-slate-200 w-56 text-center">Thao tác</th>
                         <?php endif; ?>
@@ -162,11 +162,11 @@ try {
                 <?php endif; ?>
             </thead>
             <tbody id="inventoryRows" class="divide-y divide-slate-100 text-xs">
-                <tr id="inventoryFilterEmptyRow" class="hidden"><td colspan="<?= $view === 'units' ? '3' : ($canManageMasterData ? '5' : '4') ?>" class="px-4 py-8 text-center text-slate-500">Không tìm thấy kết quả phù hợp.</td></tr>
+                <tr id="inventoryFilterEmptyRow" class="hidden"><td colspan="<?= $view === 'units' ? '3' : ($canManageMasterData ? '6' : '5') ?>" class="px-4 py-8 text-center text-slate-500">Không tìm thấy kết quả phù hợp.</td></tr>
                 <?php if ($inventoryError): ?>
-                    <tr><td colspan="<?= $view === 'units' ? '3' : ($canManageMasterData ? '5' : '4') ?>" class="px-4 py-8 text-center text-red-600"><?= htmlspecialchars($inventoryError, ENT_QUOTES, 'UTF-8') ?></td></tr>
+                    <tr><td colspan="<?= $view === 'units' ? '3' : ($canManageMasterData ? '6' : '5') ?>" class="px-4 py-8 text-center text-red-600"><?= htmlspecialchars($inventoryError, ENT_QUOTES, 'UTF-8') ?></td></tr>
                 <?php elseif (($view === 'products' && !$products) || ($view === 'units' && !$units) || ($isMaterialView && !$materials)): ?>
-                    <tr id="inventoryEmptyRow"><td colspan="<?= $view === 'units' ? '3' : ($canManageMasterData ? '5' : '4') ?>" class="px-4 py-8 text-center text-slate-500">Không tìm thấy <?= $view === 'products' ? 'thành phẩm' : ($view === 'units' ? 'đơn vị tính' : 'nguyên vật liệu') ?>.</td></tr>
+                    <tr id="inventoryEmptyRow"><td colspan="<?= $view === 'units' ? '3' : ($canManageMasterData ? '6' : '5') ?>" class="px-4 py-8 text-center text-slate-500">Không tìm thấy <?= $view === 'products' ? 'thành phẩm' : ($view === 'units' ? 'đơn vị tính' : 'nguyên vật liệu') ?>.</td></tr>
                 <?php elseif ($view === 'units'): ?>
                     <?php foreach ($units as $unit): ?>
                         <tr data-inventory-row class="hover:bg-slate-50 transition">
@@ -194,6 +194,11 @@ try {
                                 <?php else: ?>
                                     <span class="bg-emerald-50 text-emerald-600 border border-emerald-200 text-[10px] px-2 py-1 rounded-full font-medium">Tồn kho an toàn</span>
                                 <?php endif; ?>
+                            </td>
+                            <td class="px-4 py-3 text-center">
+                                <span class="<?= (int) $product['trangThai'] === 1 ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200' ?> border text-[10px] px-2 py-1 rounded-full font-medium">
+                                    <?= (int) $product['trangThai'] === 1 ? 'Đang hiển thị' : 'Đang ẩn' ?>
+                                </span>
                             </td>
                             <?php if ($canManageMasterData): ?>
                                 <td class="px-4 py-3 text-center">
@@ -225,6 +230,11 @@ try {
                                 <?php else: ?>
                                     <span class="bg-emerald-50 text-emerald-600 border border-emerald-200 text-[10px] px-2 py-1 rounded-full font-medium">Tồn kho an toàn</span>
                                 <?php endif; ?>
+                            </td>
+                            <td class="px-4 py-3 text-center">
+                                <span class="<?= (int) $material['trangThai'] === 1 ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200' ?> border text-[10px] px-2 py-1 rounded-full font-medium">
+                                    <?= (int) $material['trangThai'] === 1 ? 'Đang hiển thị' : 'Đang ẩn' ?>
+                                </span>
                             </td>
                             <?php if ($canManageMasterData): ?>
                                 <td class="px-4 py-3 text-center">
@@ -377,6 +387,26 @@ try {
     </script>
 <?php endif; ?>
 
+<?php if ($canManageMasterData): ?>
+    <div id="masterActionConfirmModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-slate-900/50 px-4" role="dialog" aria-modal="true" aria-labelledby="masterActionConfirmTitle" aria-describedby="masterActionConfirmMessage">
+        <div class="w-full max-w-md rounded-xl bg-white shadow-2xl">
+            <div class="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+                <h3 id="masterActionConfirmTitle" class="font-bold text-slate-800">Xác nhận thao tác</h3>
+                <button id="closeMasterActionConfirm" type="button" class="text-slate-400 hover:text-slate-700" aria-label="Đóng">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="px-5 py-5">
+                <p id="masterActionConfirmMessage" class="text-sm text-slate-600"></p>
+            </div>
+            <div class="flex justify-end gap-2 rounded-b-xl border-t border-slate-100 bg-slate-50 px-5 py-4">
+                <button id="cancelMasterActionConfirm" type="button" class="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-white">Hủy</button>
+                <button id="acceptMasterActionConfirm" type="button" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">Xác nhận</button>
+            </div>
+        </div>
+    </div>
+<?php endif; ?>
+
 <script>
     const inventorySearchInput = document.querySelector('#inventorySearch input[name="search"]');
     const masterStatusFilter = document.getElementById('masterStatusFilter');
@@ -407,17 +437,54 @@ try {
         window.location.href = url.toString();
     });
 
+    const masterActionConfirmModal = document.getElementById('masterActionConfirmModal');
+    const masterActionConfirmMessage = document.getElementById('masterActionConfirmMessage');
+    const acceptMasterActionConfirm = document.getElementById('acceptMasterActionConfirm');
+    const closeMasterActionConfirm = document.getElementById('closeMasterActionConfirm');
+    const cancelMasterActionConfirm = document.getElementById('cancelMasterActionConfirm');
+    let resolveMasterActionConfirm = null;
+
+    const closeMasterActionDialog = (confirmed) => {
+        masterActionConfirmModal?.classList.add('hidden');
+        masterActionConfirmModal?.classList.remove('flex');
+        if (resolveMasterActionConfirm) {
+            resolveMasterActionConfirm(confirmed);
+            resolveMasterActionConfirm = null;
+        }
+    };
+
+    const askMasterActionConfirmation = (message) => new Promise((resolve) => {
+        if (!masterActionConfirmModal || !masterActionConfirmMessage) {
+            resolve(false);
+            return;
+        }
+        masterActionConfirmMessage.textContent = message;
+        resolveMasterActionConfirm = resolve;
+        masterActionConfirmModal.classList.remove('hidden');
+        masterActionConfirmModal.classList.add('flex');
+        acceptMasterActionConfirm?.focus();
+    });
+
+    acceptMasterActionConfirm?.addEventListener('click', () => closeMasterActionDialog(true));
+    closeMasterActionConfirm?.addEventListener('click', () => closeMasterActionDialog(false));
+    cancelMasterActionConfirm?.addEventListener('click', () => closeMasterActionDialog(false));
+    masterActionConfirmModal?.addEventListener('click', (event) => {
+        if (event.target === masterActionConfirmModal) {
+            closeMasterActionDialog(false);
+        }
+    });
+
     document.querySelectorAll('[data-master-action]').forEach((button) => {
         button.addEventListener('click', async () => {
             const action = button.dataset.masterAction;
             const entity = button.dataset.masterEntity;
             const code = button.dataset.masterCode;
             const isDelete = action === 'delete';
-            const prompt = isDelete
+            const confirmationMessage = isDelete
                 ? `Xóa vĩnh viễn ${code}? Thao tác này không thể hoàn tác.`
                 : `${action === 'hide' ? 'Ẩn' : 'Hiển thị lại'} ${code}?`;
 
-            if (!window.confirm(prompt)) {
+            if (!await askMasterActionConfirmation(confirmationMessage)) {
                 return;
             }
 

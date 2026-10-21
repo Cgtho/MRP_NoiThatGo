@@ -391,7 +391,13 @@ require_once '../includes/header.php';
 
 <?php if ($pageError !== null): ?><div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert"><?= $escape($pageError) ?></div><?php endif; ?>
 <?php if ($formError !== null): ?><div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert"><?= $escape($formError) ?></div><?php endif; ?>
-<?php if ($successMessage !== null): ?><div class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700" role="status"><?= $escape($successMessage) ?></div><?php endif; ?>
+<?php if ($successMessage !== null): ?>
+    <div id="productionSuccessToast" class="fixed right-5 top-20 z-[60] flex w-full max-w-sm items-start gap-3 rounded-lg border border-emerald-200 bg-white p-4 text-sm text-emerald-700 shadow-lg" role="status">
+        <i class="fa-solid fa-circle-check mt-0.5 text-emerald-500"></i>
+        <span class="flex-1"><?= $escape($successMessage) ?></span>
+        <button type="button" id="closeProductionSuccessToast" class="text-lg leading-none text-slate-400 hover:text-slate-700" aria-label="Đóng thông báo">&times;</button>
+    </div>
+<?php endif; ?>
 
 <div class="flex items-center gap-2 mb-4 overflow-x-auto border-b border-slate-200 pb-2 scrollbar-custom">
     <?php $filters = ['all' => ['Tất cả', ''], 'pending' => ['Chờ xử lý', 'fa-regular fa-clock'], 'working' => ['Đang làm', 'fa-solid fa-gears'], 'completed' => ['Đã hoàn thành', 'fa-regular fa-circle-check']]; ?>
@@ -494,5 +500,17 @@ require_once '../includes/header.php';
     </div>
 </div>
 <script src="../assets/js/production.js"></script>
+<?php endif; ?>
+<?php if ($successMessage !== null): ?>
+<script>
+    const productionSuccessToast = document.getElementById('productionSuccessToast');
+    const closeProductionSuccessToast = document.getElementById('closeProductionSuccessToast');
+    const dismissProductionSuccessToast = () => {
+        productionSuccessToast?.remove();
+    };
+
+    closeProductionSuccessToast?.addEventListener('click', dismissProductionSuccessToast);
+    window.setTimeout(dismissProductionSuccessToast, 5000);
+</script>
 <?php endif; ?>
 <?php require_once '../includes/footer.php'; ?>

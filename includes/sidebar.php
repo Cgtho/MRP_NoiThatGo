@@ -2,6 +2,24 @@
 $isManager = (int) ($_SESSION['role'] ?? 1) === 0;
 $roleLabel = $isManager ? 'Quản lý kho' : 'Nhân viên kho';
 $currentPage = basename($_SERVER['PHP_SELF']);
+$pendingMaterialExports = 0;
+$pendingProductExports = 0;
+$pendingProductionOrders = 0;
+
+if (isset($pdo)) {
+    if ($isManager) {
+        $pendingMaterialExports = (int) $pdo->query(
+            'SELECT COUNT(*) FROM PHIEUXUATNVL WHERE trangThai = 0'
+        )->fetchColumn();
+        $pendingProductExports = (int) $pdo->query(
+            'SELECT COUNT(*) FROM PHIEUXUATTP WHERE trangThai = 0'
+        )->fetchColumn();
+    } else {
+        $pendingProductionOrders = (int) $pdo->query(
+            'SELECT COUNT(*) FROM YEUCAU WHERE trangThai <> 2'
+        )->fetchColumn();
+    }
+}
 $navItemClass = static function (string $page) use ($currentPage): string {
     return $currentPage === $page
         ? 'flex items-center gap-3 px-3 py-2 rounded-lg bg-blue-600 text-white font-medium'
@@ -58,7 +76,13 @@ $navItemClass = static function (string $page) use ($currentPage): string {
                 </li>
                 <li>
                     <a href="production_orders.php" class="<?= $navItemClass('production_orders.php') ?>" <?= $currentPage === 'production_orders.php' ? 'aria-current="page"' : '' ?>>
-                        <i class="fa-regular fa-clipboard text-indigo-400 w-5 text-center"></i> Lệnh sản xuất (Yêu cầu)
+                        <div class="flex items-center gap-3">
+                            <i class="fa-regular fa-clipboard text-indigo-400 w-5 text-center"></i>
+                            Lệnh sản xuất
+                        </div>
+                        <?php if (!$isManager && $pendingProductionOrders > 0): ?>
+                            <span class="bg-amber-500 text-white text-[10px] px-1.5 py-0.5 rounded"><?= $pendingProductionOrders > 99 ? '99+' : $pendingProductionOrders ?></span>
+                        <?php endif; ?>
                     </a>
                 </li>
                 <?php if ($isManager): ?>
@@ -75,7 +99,7 @@ $navItemClass = static function (string $page) use ($currentPage): string {
                             <?= $isManager ? 'Phê duyệt xuất NVL' : 'Tạo phiếu xuất NVL' ?>
                         </div>
                         <?php if ($isManager): ?>
-                            <span class="bg-amber-500 text-white text-[10px] px-1.5 py-0.5 rounded">1</span>
+                            <span class="bg-amber-500 text-white text-[10px] px-1.5 py-0.5 rounded"><?= $pendingMaterialExports > 99 ? '99+' : $pendingMaterialExports ?></span>
                         <?php endif; ?>
                     </a>
                 </li>
@@ -86,7 +110,7 @@ $navItemClass = static function (string $page) use ($currentPage): string {
                             <?= $isManager ? 'Phê duyệt phiếu xuất thành phẩm' : 'Tạo phiếu xuất thành phẩm' ?>
                         </div>
                         <?php if ($isManager): ?>
-                            <span class="bg-amber-500 text-white text-[10px] px-1.5 py-0.5 rounded">1</span>
+                            <span class="bg-amber-500 text-white text-[10px] px-1.5 py-0.5 rounded"><?= $pendingProductExports > 99 ? '99+' : $pendingProductExports ?></span>
                         <?php endif; ?>
                     </a>
                 </li>

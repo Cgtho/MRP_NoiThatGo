@@ -8,6 +8,8 @@ if (!isset($_SESSION['current_user'], $_SESSION['user_name'], $_SESSION['role'])
     exit;
 }
 
+require_once __DIR__ . '/../config/db.php';
+
 $isManager = (int) $_SESSION['role'] === 0;
 $roleLabel = $isManager ? 'Quản lý kho' : 'Nhân viên kho';
 $roleIcon = $isManager ? 'fa-crown' : 'fa-user';
@@ -54,7 +56,7 @@ $roleIcon = $isManager ? 'fa-crown' : 'fa-user';
                     <h2 class="font-semibold text-slate-800">Thông báo</h2>
                     <span id="notificationCount" class="text-xs text-slate-500">Đang tải...</span>
                 </div>
-                <div id="notificationList" class="divide-y divide-slate-100">
+                <div id="notificationList" class="max-h-[31rem] overflow-y-auto divide-y divide-slate-100">
                     <p class="px-4 py-5 text-center text-sm text-slate-500">Đang tải thông báo...</p>
                 </div>
             </div>
