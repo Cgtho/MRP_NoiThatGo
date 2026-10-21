@@ -49,8 +49,8 @@ try {
     }
 
     $stmt = $pdo->prepare(
-        'INSERT INTO NGUYENVATLIEU (maNVL, tenNVL, maDVT, soLuong)
-         VALUES (:maNVL, :tenNVL, :maDVT, 0)'
+        'INSERT INTO NGUYENVATLIEU (maNVL, tenNVL, maDVT, soLuong, isDeleted, trangThai)
+         VALUES (:maNVL, :tenNVL, :maDVT, 0, 1, 1)'
     );
     $stmt->execute(['maNVL' => $materialCode, 'tenNVL' => $materialName, 'maDVT' => $unitId]);
     echo json_encode(['success' => true, 'message' => 'Đã thêm nguyên vật liệu ' . $materialCode . '.']);

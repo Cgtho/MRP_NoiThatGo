@@ -24,10 +24,10 @@ try {
     }
     $pendingTasks = (int) $stmt->fetchColumn();
 
-    $stats['materialKinds'] = (int) $pdo->query('SELECT COUNT(*) FROM NGUYENVATLIEU')->fetchColumn();
-    $stats['materialQty'] = (int) $pdo->query('SELECT COALESCE(SUM(soLuong), 0) FROM NGUYENVATLIEU')->fetchColumn();
-    $stats['productKinds'] = (int) $pdo->query('SELECT COUNT(*) FROM THANHPHAM')->fetchColumn();
-    $stats['productQty'] = (int) $pdo->query('SELECT COALESCE(SUM(soLuong), 0) FROM THANHPHAM')->fetchColumn();
+    $stats['materialKinds'] = (int) $pdo->query('SELECT COUNT(*) FROM NGUYENVATLIEU WHERE trangThai = 1')->fetchColumn();
+    $stats['materialQty'] = (int) $pdo->query('SELECT COALESCE(SUM(soLuong), 0) FROM NGUYENVATLIEU WHERE trangThai = 1')->fetchColumn();
+    $stats['productKinds'] = (int) $pdo->query('SELECT COUNT(*) FROM THANHPHAM WHERE trangThai = 1')->fetchColumn();
+    $stats['productQty'] = (int) $pdo->query('SELECT COALESCE(SUM(soLuong), 0) FROM THANHPHAM WHERE trangThai = 1')->fetchColumn();
     $stats['orders'] = (int) $pdo->query('SELECT COUNT(*) FROM YEUCAU')->fetchColumn();
     if ($isManager) {
         $stats['pendingExports'] = $pendingTasks;

@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isManager && ($_POST['action'] ??
         try {
             $pdo->beginTransaction();
             $productStatement = $pdo->prepare(
-                'SELECT maTP, soLuong FROM THANHPHAM WHERE maTP = :maTP FOR UPDATE'
+                'SELECT maTP, soLuong FROM THANHPHAM WHERE maTP = :maTP AND trangThai = 1 FOR UPDATE'
             );
             foreach ($items as $productCode => $quantity) {
                 $productStatement->execute(['maTP' => $productCode]);
@@ -90,6 +90,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isManager && ($_POST['action'] ??
                     'soLuong' => $quantity,
                 ]);
             }
+            $markProductUsed = $pdo->prepare('UPDATE THANHPHAM SET isDeleted = 0 WHERE maTP = :maTP');
+            foreach (array_keys($items) as $productCode) {
+                $markProductUsed->execute(['maTP' => $productCode]);
+            }
             $pdo->commit();
             header('Location: export_products.php?status=pending&maPX=' . urlencode($exportCode));
             exit;
@@ -107,7 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isManager && ($_POST['action'] ??
 try {
     if (!$isManager) {
         $productRows = $pdo->query(
-            'SELECT maTP, tenTP, donViTinh, soLuong FROM THANHPHAM ORDER BY maTP ASC'
+            'SELECT maTP, tenTP, donViTinh, soLuong FROM THANHPHAM WHERE trangThai = 1 ORDER BY maTP ASC'
         )->fetchAll();
     }
     $listStatement = $pdo->prepare(
@@ -476,4 +480,3 @@ $canReject = $isManager && $selectedExport !== null && $selectedStatus === 0;
 
 <?php require_once '../includes/footer.php'; ?>
 <script src="../assets/js/export_products.js"></script>
-

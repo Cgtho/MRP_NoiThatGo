@@ -45,6 +45,8 @@ CREATE TABLE IF NOT EXISTS NGUYENVATLIEU (
     tenNVL VARCHAR(50) NOT NULL,
     maDVT INT NOT NULL,
     soLuong INT NOT NULL DEFAULT 0,
+    isDeleted TINYINT NOT NULL DEFAULT 1,
+    trangThai TINYINT NOT NULL DEFAULT 1,
 
     CONSTRAINT fk_nvl_dvt
         FOREIGN KEY (maDVT)
@@ -85,7 +87,9 @@ CREATE TABLE IF NOT EXISTS THANHPHAM (
     maTP VARCHAR(20) PRIMARY KEY,
     tenTP VARCHAR(50) NOT NULL,
     donViTinh VARCHAR(20) NOT NULL,
-    soLuong INT NOT NULL DEFAULT 0
+    soLuong INT NOT NULL DEFAULT 0,
+    isDeleted TINYINT NOT NULL DEFAULT 1,
+    trangThai TINYINT NOT NULL DEFAULT 1
 ) ENGINE=InnoDB;
 
 
@@ -307,6 +311,112 @@ CREATE TABLE IF NOT EXISTS CHITIETYEUCAU (
 ) ENGINE=InnoDB;
 
 
+-- ==========================================================
+-- 13.1 BỔ SUNG TRẠNG THÁI DỮ LIỆU GỐC
+-- isDeleted:
+--   1 = Chưa từng được sử dụng, có thể xóa cứng
+--   0 = Đã được sử dụng, không được xóa cứng
+-- trangThai:
+--   1 = Đang hiển thị/sử dụng
+--   0 = Đang ẩn/ngừng sử dụng
+--
+-- Các lệnh dưới đây dùng cho cơ sở dữ liệu đã tạo từ phiên bản cũ.
+-- MariaDB hỗ trợ IF NOT EXISTS khi bổ sung cột.
+-- ==========================================================
+
+ALTER TABLE NGUYENVATLIEU
+    ADD COLUMN IF NOT EXISTS isDeleted TINYINT NOT NULL DEFAULT 1,
+    ADD COLUMN IF NOT EXISTS trangThai TINYINT NOT NULL DEFAULT 1;
+
+ALTER TABLE THANHPHAM
+    ADD COLUMN IF NOT EXISTS isDeleted TINYINT NOT NULL DEFAULT 1,
+    ADD COLUMN IF NOT EXISTS trangThai TINYINT NOT NULL DEFAULT 1;
+
+-- Khóa xóa cứng các nguyên vật liệu/thành phẩm đã có lịch sử sử dụng.
+UPDATE NGUYENVATLIEU AS nvl
+SET isDeleted = 0
+WHERE EXISTS (SELECT 1 FROM CHITIETTHANHPHAM ct WHERE ct.maNVL = nvl.maNVL)
+   OR EXISTS (SELECT 1 FROM CHITIETPHIEUNHAP ct WHERE ct.maNVL = nvl.maNVL)
+   OR EXISTS (SELECT 1 FROM CHITIETPHIEUXUATNVL ct WHERE ct.maNVL = nvl.maNVL);
+
+UPDATE THANHPHAM AS tp
+SET isDeleted = 0
+WHERE EXISTS (SELECT 1 FROM CHITIETTHANHPHAM ct WHERE ct.maTP = tp.maTP)
+   OR EXISTS (SELECT 1 FROM CHITIETPHIEUXUATTP ct WHERE ct.maTP = tp.maTP)
+   OR EXISTS (SELECT 1 FROM CHITIETYEUCAU ct WHERE ct.maTP = tp.maTP);
+
+
+-- ==========================================================
+-- 13.2 TỰ ĐỘNG KHÓA XÓA KHI PHÁT SINH QUAN HỆ
+-- Khi NVL/thành phẩm được ghi nhận trong bảng chi tiết,
+-- isDeleted của dữ liệu gốc tự động chuyển thành 0.
+-- ==========================================================
+
+DELIMITER //
+
+DROP TRIGGER IF EXISTS trg_cttp_mark_material_used//
+DROP TRIGGER IF EXISTS trg_cttp_mark_product_used//
+DROP TRIGGER IF EXISTS trg_ctpn_mark_material_used//
+DROP TRIGGER IF EXISTS trg_ctpxnvl_mark_material_used//
+DROP TRIGGER IF EXISTS trg_ctpxtp_mark_product_used//
+DROP TRIGGER IF EXISTS trg_ctyc_mark_product_used//
+
+CREATE TRIGGER trg_cttp_mark_material_used
+AFTER INSERT ON CHITIETTHANHPHAM
+FOR EACH ROW
+BEGIN
+    UPDATE NGUYENVATLIEU
+    SET isDeleted = 0
+    WHERE maNVL = NEW.maNVL;
+END//
+
+CREATE TRIGGER trg_cttp_mark_product_used
+AFTER INSERT ON CHITIETTHANHPHAM
+FOR EACH ROW
+BEGIN
+    UPDATE THANHPHAM
+    SET isDeleted = 0
+    WHERE maTP = NEW.maTP;
+END//
+
+CREATE TRIGGER trg_ctpn_mark_material_used
+AFTER INSERT ON CHITIETPHIEUNHAP
+FOR EACH ROW
+BEGIN
+    UPDATE NGUYENVATLIEU
+    SET isDeleted = 0
+    WHERE maNVL = NEW.maNVL;
+END//
+
+CREATE TRIGGER trg_ctpxnvl_mark_material_used
+AFTER INSERT ON CHITIETPHIEUXUATNVL
+FOR EACH ROW
+BEGIN
+    UPDATE NGUYENVATLIEU
+    SET isDeleted = 0
+    WHERE maNVL = NEW.maNVL;
+END//
+
+CREATE TRIGGER trg_ctpxtp_mark_product_used
+AFTER INSERT ON CHITIETPHIEUXUATTP
+FOR EACH ROW
+BEGIN
+    UPDATE THANHPHAM
+    SET isDeleted = 0
+    WHERE maTP = NEW.maTP;
+END//
+
+CREATE TRIGGER trg_ctyc_mark_product_used
+AFTER INSERT ON CHITIETYEUCAU
+FOR EACH ROW
+BEGIN
+    UPDATE THANHPHAM
+    SET isDeleted = 0
+    WHERE maTP = NEW.maTP;
+END//
+
+DELIMITER ;
+
 
 -- ==========================================================
 -- ==================== DỮ LIỆU MẪU =========================
@@ -346,41 +456,41 @@ INSERT INTO NHANVIEN (maNV, hoTen, vaiTro, trangThai, matKhau, sdt, diaChi) VALU
 
 
 -- ==========================================================
--- 16. 24 NGUYÊN VẬT LIỆU
+-- 16. 25 NGUYÊN VẬT LIỆU
 -- ==========================================================
 
 INSERT INTO NGUYENVATLIEU
-(maNVL, tenNVL, maDVT, soLuong) VALUES
+(maNVL, tenNVL, maDVT, soLuong, isDeleted, trangThai) VALUES
 
-('NVL001', 'Gỗ MDF 18mm',        5, 500),
-('NVL002', 'Gỗ MDF 9mm',         5, 300),
-('NVL003', 'Gỗ cao su',          5, 400),
-('NVL004', 'Gỗ thông',           5, 350),
-('NVL005', 'Gỗ sồi',             5, 250),
-('NVL006', 'Ván ép',             5, 300),
-('NVL007', 'Veneer gỗ sồi',      4, 200),
-('NVL008', 'Laminate',           5, 250),
+('NVL001', 'Gỗ MDF 18mm',        5, 500, 0, 1),
+('NVL002', 'Gỗ MDF 9mm',         5, 300, 0, 1),
+('NVL003', 'Gỗ cao su',          5, 400, 0, 1),
+('NVL004', 'Gỗ thông',           5, 350, 0, 1),
+('NVL005', 'Gỗ sồi',             5, 250, 0, 1),
+('NVL006', 'Ván ép',             5, 300, 0, 1),
+('NVL007', 'Veneer gỗ sồi',      4, 200, 0, 1),
+('NVL008', 'Laminate',           5, 250, 0, 1),
 
-('NVL009', 'Sơn PU trắng',       2, 150),
-('NVL010', 'Sơn PU nâu',         2, 180),
-('NVL011', 'Sơn PU đen',         2, 120),
-('NVL012', 'Sơn PU trong',       2, 100),
+('NVL009', 'Sơn PU trắng',       2, 150, 0, 1),
+('NVL010', 'Sơn PU nâu',         2, 180, 0, 1),
+('NVL011', 'Sơn PU đen',         2, 120, 0, 1),
+('NVL012', 'Sơn PU trong',       2, 100, 0, 1),
 
-('NVL013', 'Keo dán gỗ',         2, 120),
-('NVL014', 'Keo AB',             2, 80),
-('NVL015', 'Vít gỗ 4x40',        3, 3000),
-('NVL016', 'Vít gỗ 5x50',        3, 2500),
+('NVL013', 'Keo dán gỗ',         2, 120, 0, 1),
+('NVL014', 'Keo AB',             2, 80, 0, 1),
+('NVL015', 'Vít gỗ 4x40',        3, 3000, 0, 1),
+('NVL016', 'Vít gỗ 5x50',        3, 2500, 0, 1),
 
-('NVL017', 'Bản lề tủ',          3, 800),
-('NVL018', 'Ray trượt ngăn kéo', 3, 600),
-('NVL019', 'Tay nắm tủ',         3, 700),
-('NVL020', 'Chân bàn',           3, 400),
+('NVL017', 'Bản lề tủ',          3, 800, 0, 1),
+('NVL018', 'Ray trượt ngăn kéo', 3, 600, 0, 1),
+('NVL019', 'Tay nắm tủ',         3, 700, 0, 1),
+('NVL020', 'Chân bàn',           3, 400, 0, 1),
 
-('NVL021', 'Chân ghế',           3, 500),
-('NVL022', 'Đệm mút',            5, 300),
-('NVL023', 'Vải bọc ghế',        4, 400),
-('NVL024', 'Kính cường lực',     5, 200),
-('NVL025', 'Ốc lục giác',        3, 0);
+('NVL021', 'Chân ghế',           3, 500, 0, 1),
+('NVL022', 'Đệm mút',            5, 300, 0, 1),
+('NVL023', 'Vải bọc ghế',        4, 400, 0, 1),
+('NVL024', 'Kính cường lực',     5, 200, 0, 1),
+('NVL025', 'Ốc lục giác',        3, 0, 0, 1);
 
 
 -- ==========================================================
@@ -388,19 +498,19 @@ INSERT INTO NGUYENVATLIEU
 -- ==========================================================
 
 INSERT INTO THANHPHAM
-(maTP, tenTP, donViTinh, soLuong) VALUES
+(maTP, tenTP, donViTinh, soLuong, isDeleted, trangThai) VALUES
 
-('TP001', 'Bàn làm việc gỗ',    'Cái', 30),
-('TP002', 'Bàn ăn gỗ',          'Cái', 25),
-('TP003', 'Ghế ăn gỗ',          'Cái', 40),
-('TP004', 'Ghế văn phòng gỗ',   'Cái', 25),
-('TP005', 'Tủ quần áo gỗ',      'Cái', 15),
-('TP006', 'Tủ hồ sơ gỗ',        'Cái', 20),
-('TP007', 'Kệ sách gỗ',         'Cái', 25),
-('TP008', 'Kệ tivi gỗ',         'Cái', 20),
-('TP009', 'Giường ngủ gỗ',      'Cái', 15),
-('TP010', 'Bàn trang điểm gỗ',  'Cái', 15),
-('TP011', 'Ván lót gỗ',         'Cái', 0);
+('TP001', 'Bàn làm việc gỗ',    'Cái', 30, 0, 1),
+('TP002', 'Bàn ăn gỗ',          'Cái', 25, 0, 1),
+('TP003', 'Ghế ăn gỗ',          'Cái', 40, 0, 1),
+('TP004', 'Ghế văn phòng gỗ',   'Cái', 25, 0, 1),
+('TP005', 'Tủ quần áo gỗ',     'Cái', 15, 0, 1),
+('TP006', 'Tủ hồ sơ gỗ',        'Cái', 20, 0, 1),
+('TP007', 'Kệ sách gỗ',         'Cái', 25, 0, 1),
+('TP008', 'Kệ tivi gỗ',         'Cái', 20, 0, 1),
+('TP009', 'Giường ngủ gỗ',      'Cái', 15, 0, 1),
+('TP010', 'Bàn trang điểm gỗ',  'Cái', 15, 0, 1),
+('TP011', 'Ván lót gỗ',         'Cái', 0, 0, 1);
 
 
 -- ==========================================================

@@ -5,6 +5,10 @@ require_once '../includes/csrf.php';
 
 $canManageMasterData = (int) ($_SESSION['role'] ?? 1) === 0;
 $search = trim((string) ($_GET['search'] ?? ''));
+$statusFilter = (string) ($_GET['status'] ?? 'active');
+$statusFilter = $canManageMasterData ? $statusFilter : 'active';
+$statusFilter = in_array($statusFilter, ['active', 'hidden', 'all'], true) ? $statusFilter : 'active';
+$statusCondition = $statusFilter === 'active' ? ' = 1' : ($statusFilter === 'hidden' ? ' = 0' : ' IN (0, 1)');
 $requestedView = $_GET['view'] ?? 'materials';
 $view = $requestedView === 'materials' ? 'warehouse_materials' : $requestedView;
 $view = in_array($view, ['warehouse_materials', 'workshop_materials', 'products', 'units'], true) ? $view : 'warehouse_materials';
@@ -18,9 +22,9 @@ $inventoryError = null;
 
 try {
     if ($view === 'products') {
-        $sql = 'SELECT tenTP, donViTinh, soLuong FROM THANHPHAM';
+        $sql = 'SELECT maTP, tenTP, donViTinh, soLuong, isDeleted, trangThai FROM THANHPHAM WHERE trangThai' . $statusCondition;
         if ($search !== '') {
-            $sql .= ' WHERE tenTP LIKE :search';
+            $sql .= ' AND tenTP LIKE :search';
         }
         $sql .= ' ORDER BY tenTP ASC';
         $stmt = $pdo->prepare($sql);
@@ -29,7 +33,7 @@ try {
     } elseif ($view === 'units') {
         $sql = 'SELECT dvt.tenDVT, COUNT(nvl.maNVL) AS soLuongNVL
                 FROM DONVITINH dvt
-                LEFT JOIN NGUYENVATLIEU nvl ON nvl.maDVT = dvt.maDVT';
+                LEFT JOIN NGUYENVATLIEU nvl ON nvl.maDVT = dvt.maDVT AND nvl.trangThai' . $statusCondition;
         if ($search !== '') {
             $sql .= ' WHERE dvt.tenDVT LIKE :search';
         }
@@ -40,20 +44,24 @@ try {
     } else {
         if ($view === 'workshop_materials') {
             $sql = 'SELECT master.maNVL, master.tenNVL, dvt.tenDVT,
-                           COALESCE(workshop.soLuong, 0) AS soLuong
+                           COALESCE(workshop.soLuong, 0) AS soLuong,
+                           master.isDeleted, master.trangThai
                     FROM NGUYENVATLIEU master
                     LEFT JOIN NGUYENVATLIEUXUONG workshop ON workshop.maNVL = master.maNVL
                     INNER JOIN DONVITINH dvt ON dvt.maDVT = master.maDVT';
+            $sql .= ' WHERE master.trangThai' . $statusCondition;
         } else {
-            $sql = 'SELECT nvl.maNVL, nvl.tenNVL, dvt.tenDVT, nvl.soLuong
+            $sql = 'SELECT nvl.maNVL, nvl.tenNVL, dvt.tenDVT, nvl.soLuong,
+                           nvl.isDeleted, nvl.trangThai
                     FROM NGUYENVATLIEU nvl
-                    INNER JOIN DONVITINH dvt ON dvt.maDVT = nvl.maDVT';
+                    INNER JOIN DONVITINH dvt ON dvt.maDVT = nvl.maDVT
+                    WHERE nvl.trangThai' . $statusCondition;
         }
 
         if ($search !== '') {
             $sql .= $view === 'workshop_materials'
-                ? ' WHERE master.tenNVL LIKE :search'
-                : ' WHERE nvl.tenNVL LIKE :search';
+                ? ' AND master.tenNVL LIKE :search'
+                : ' AND nvl.tenNVL LIKE :search';
         }
 
         $sql .= $view === 'workshop_materials' ? ' ORDER BY master.tenNVL ASC' : ' ORDER BY nvl.tenNVL ASC';
@@ -80,29 +88,37 @@ try {
     <form id="inventorySearch" method="get" class="relative w-64">
         <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-sm"></i>
         <input type="hidden" name="view" value="<?= htmlspecialchars($view, ENT_QUOTES, 'UTF-8') ?>">
+        <input type="hidden" name="status" value="<?= htmlspecialchars($statusFilter, ENT_QUOTES, 'UTF-8') ?>">
         <input type="search" name="search" value="<?= htmlspecialchars($search, ENT_QUOTES, 'UTF-8') ?>" placeholder="<?= $view === 'products' ? 'Tìm kiếm tên thành phẩm...' : ($view === 'units' ? 'Tìm kiếm đơn vị tính...' : 'Tìm kiếm tên vật liệu...') ?>" class="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 shadow-sm" autocomplete="off">
     </form>
+    <?php if ($canManageMasterData && $view !== 'units'): ?>
+        <select id="masterStatusFilter" class="border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-600" aria-label="Lọc trạng thái">
+            <option value="active" <?= $statusFilter === 'active' ? 'selected' : '' ?>>Đang hiển thị</option>
+            <option value="hidden" <?= $statusFilter === 'hidden' ? 'selected' : '' ?>>Đang ẩn</option>
+            <option value="all" <?= $statusFilter === 'all' ? 'selected' : '' ?>>Tất cả trạng thái</option>
+        </select>
+    <?php endif; ?>
 </div>
 
 <!-- Tabs Điều Hướng -->
 <div class="flex items-center gap-2 mb-6 border-b border-slate-200 pb-2">
-    <a href="inventory.php?view=warehouse_materials" class="<?= $isMaterialView ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800' ?> text-[13px] font-medium px-4 py-2 rounded-lg flex items-center gap-2 transition">
+    <a href="inventory.php?view=warehouse_materials&amp;status=<?= urlencode($statusFilter) ?>" class="<?= $isMaterialView ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800' ?> text-[13px] font-medium px-4 py-2 rounded-lg flex items-center gap-2 transition">
         <i class="fa-solid fa-cubes"></i> Nguyên vật liệu
     </a>
-    <a href="inventory.php?view=products" class="<?= $view === 'products' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800' ?> text-[13px] font-medium px-4 py-2 rounded-lg flex items-center gap-2 transition">
+    <a href="inventory.php?view=products&amp;status=<?= urlencode($statusFilter) ?>" class="<?= $view === 'products' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800' ?> text-[13px] font-medium px-4 py-2 rounded-lg flex items-center gap-2 transition">
         <i class="fa-solid fa-box"></i> Thành Phẩm
     </a>
-    <a href="inventory.php?view=units" class="<?= $view === 'units' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800' ?> text-[13px] font-medium px-4 py-2 rounded-lg flex items-center gap-2 transition">
+    <a href="inventory.php?view=units&amp;status=<?= urlencode($statusFilter) ?>" class="<?= $view === 'units' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800' ?> text-[13px] font-medium px-4 py-2 rounded-lg flex items-center gap-2 transition">
         <i class="fa-solid fa-tags"></i> Đơn Vị Tính
     </a>
 </div>
 
 <?php if ($isMaterialView): ?>
     <div class="flex items-center gap-2 mb-6 border-b border-slate-200 pb-2">
-        <a href="inventory.php?view=warehouse_materials" class="<?= $view === 'warehouse_materials' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-slate-800' ?> border text-xs font-medium px-4 py-2 rounded-lg transition" aria-current="<?= $view === 'warehouse_materials' ? 'page' : 'false' ?>">
+        <a href="inventory.php?view=warehouse_materials&amp;status=<?= urlencode($statusFilter) ?>" class="<?= $view === 'warehouse_materials' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-slate-800' ?> border text-xs font-medium px-4 py-2 rounded-lg transition" aria-current="<?= $view === 'warehouse_materials' ? 'page' : 'false' ?>">
             <i class="fa-solid fa-warehouse mr-1"></i> Nguyên vật liệu kho
         </a>
-        <a href="inventory.php?view=workshop_materials" class="<?= $view === 'workshop_materials' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-slate-800' ?> border text-xs font-medium px-4 py-2 rounded-lg transition" aria-current="<?= $view === 'workshop_materials' ? 'page' : 'false' ?>">
+        <a href="inventory.php?view=workshop_materials&amp;status=<?= urlencode($statusFilter) ?>" class="<?= $view === 'workshop_materials' ? 'bg-blue-100 text-blue-700 border-blue-200' : 'text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-slate-800' ?> border text-xs font-medium px-4 py-2 rounded-lg transition" aria-current="<?= $view === 'workshop_materials' ? 'page' : 'false' ?>">
             <i class="fa-solid fa-industry mr-1"></i> Nguyên vật liệu xưởng
         </a>
         <?php if ($canManageMasterData): ?>
@@ -139,15 +155,18 @@ try {
                         <th class="px-4 py-3 border-b border-slate-200 w-48 text-center">Đơn Vị Tính</th>
                         <th class="px-4 py-3 border-b border-slate-200 w-48 text-right">Số Lượng Tồn Kho</th>
                         <th class="px-4 py-3 border-b border-slate-200 w-40 text-center">Cảnh Báo Dự Trữ</th>
+                        <?php if ($canManageMasterData): ?>
+                            <th class="px-4 py-3 border-b border-slate-200 w-56 text-center">Thao tác</th>
+                        <?php endif; ?>
                     </tr>
                 <?php endif; ?>
             </thead>
             <tbody id="inventoryRows" class="divide-y divide-slate-100 text-xs">
-                <tr id="inventoryFilterEmptyRow" class="hidden"><td colspan="<?= $view === 'units' ? '3' : '4' ?>" class="px-4 py-8 text-center text-slate-500">Không tìm thấy kết quả phù hợp.</td></tr>
+                <tr id="inventoryFilterEmptyRow" class="hidden"><td colspan="<?= $view === 'units' ? '3' : ($canManageMasterData ? '5' : '4') ?>" class="px-4 py-8 text-center text-slate-500">Không tìm thấy kết quả phù hợp.</td></tr>
                 <?php if ($inventoryError): ?>
-                    <tr><td colspan="<?= $view === 'units' ? '3' : '4' ?>" class="px-4 py-8 text-center text-red-600"><?= htmlspecialchars($inventoryError, ENT_QUOTES, 'UTF-8') ?></td></tr>
+                    <tr><td colspan="<?= $view === 'units' ? '3' : ($canManageMasterData ? '5' : '4') ?>" class="px-4 py-8 text-center text-red-600"><?= htmlspecialchars($inventoryError, ENT_QUOTES, 'UTF-8') ?></td></tr>
                 <?php elseif (($view === 'products' && !$products) || ($view === 'units' && !$units) || ($isMaterialView && !$materials)): ?>
-                    <tr id="inventoryEmptyRow"><td colspan="<?= $view === 'units' ? '3' : '4' ?>" class="px-4 py-8 text-center text-slate-500">Không tìm thấy <?= $view === 'products' ? 'thành phẩm' : ($view === 'units' ? 'đơn vị tính' : 'nguyên vật liệu') ?>.</td></tr>
+                    <tr id="inventoryEmptyRow"><td colspan="<?= $view === 'units' ? '3' : ($canManageMasterData ? '5' : '4') ?>" class="px-4 py-8 text-center text-slate-500">Không tìm thấy <?= $view === 'products' ? 'thành phẩm' : ($view === 'units' ? 'đơn vị tính' : 'nguyên vật liệu') ?>.</td></tr>
                 <?php elseif ($view === 'units'): ?>
                     <?php foreach ($units as $unit): ?>
                         <tr data-inventory-row class="hover:bg-slate-50 transition">
@@ -176,6 +195,21 @@ try {
                                     <span class="bg-emerald-50 text-emerald-600 border border-emerald-200 text-[10px] px-2 py-1 rounded-full font-medium">Tồn kho an toàn</span>
                                 <?php endif; ?>
                             </td>
+                            <?php if ($canManageMasterData): ?>
+                                <td class="px-4 py-3 text-center">
+                                    <div class="flex justify-center gap-2">
+                                        <button type="button" data-master-action="<?= (int) $product['trangThai'] === 1 ? 'hide' : 'show' ?>" data-master-entity="product" data-master-code="<?= htmlspecialchars($product['maTP'], ENT_QUOTES, 'UTF-8') ?>" class="rounded-md px-2 py-1 text-[11px] <?= (int) $product['trangThai'] === 1 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700' ?>">
+                                            <i class="fa-solid <?= (int) $product['trangThai'] === 1 ? 'fa-eye-slash' : 'fa-eye' ?>"></i>
+                                            <?= (int) $product['trangThai'] === 1 ? 'Ẩn' : 'Hiện' ?>
+                                        </button>
+                                        <?php if ((int) $product['isDeleted'] === 1): ?>
+                                            <button type="button" data-master-action="delete" data-master-entity="product" data-master-code="<?= htmlspecialchars($product['maTP'], ENT_QUOTES, 'UTF-8') ?>" class="rounded-md bg-rose-50 px-2 py-1 text-[11px] text-rose-700">
+                                                <i class="fa-solid fa-trash"></i> Xóa
+                                            </button>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
+                            <?php endif; ?>
                         </tr>
                     <?php endforeach; ?>
                 <?php else: ?>
@@ -192,6 +226,21 @@ try {
                                     <span class="bg-emerald-50 text-emerald-600 border border-emerald-200 text-[10px] px-2 py-1 rounded-full font-medium">Tồn kho an toàn</span>
                                 <?php endif; ?>
                             </td>
+                            <?php if ($canManageMasterData): ?>
+                                <td class="px-4 py-3 text-center">
+                                    <div class="flex justify-center gap-2">
+                                        <button type="button" data-master-action="<?= (int) $material['trangThai'] === 1 ? 'hide' : 'show' ?>" data-master-entity="material" data-master-code="<?= htmlspecialchars($material['maNVL'], ENT_QUOTES, 'UTF-8') ?>" class="rounded-md px-2 py-1 text-[11px] <?= (int) $material['trangThai'] === 1 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700' ?>">
+                                            <i class="fa-solid <?= (int) $material['trangThai'] === 1 ? 'fa-eye-slash' : 'fa-eye' ?>"></i>
+                                            <?= (int) $material['trangThai'] === 1 ? 'Ẩn' : 'Hiện' ?>
+                                        </button>
+                                        <?php if ((int) $material['isDeleted'] === 1): ?>
+                                            <button type="button" data-master-action="delete" data-master-entity="material" data-master-code="<?= htmlspecialchars($material['maNVL'], ENT_QUOTES, 'UTF-8') ?>" class="rounded-md bg-rose-50 px-2 py-1 text-[11px] text-rose-700">
+                                                <i class="fa-solid fa-trash"></i> Xóa
+                                            </button>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
+                            <?php endif; ?>
                         </tr>
                     <?php endforeach; ?>
                 <?php endif; ?>
@@ -330,6 +379,7 @@ try {
 
 <script>
     const inventorySearchInput = document.querySelector('#inventorySearch input[name="search"]');
+    const masterStatusFilter = document.getElementById('masterStatusFilter');
     const inventoryRows = [...document.querySelectorAll('[data-inventory-row]')];
     const inventoryEmptyRow = document.getElementById('inventoryEmptyRow');
     const inventoryFilterEmptyRow = document.getElementById('inventoryFilterEmptyRow');
@@ -348,6 +398,51 @@ try {
             inventoryEmptyRow.classList.toggle('hidden', visibleRows > 0 || searchValue === '');
         }
         inventoryFilterEmptyRow?.classList.toggle('hidden', visibleRows > 0 || searchValue === '');
+    });
+
+    masterStatusFilter?.addEventListener('change', () => {
+        const url = new URL(window.location.href);
+        url.searchParams.set('status', masterStatusFilter.value);
+        url.searchParams.delete('search');
+        window.location.href = url.toString();
+    });
+
+    document.querySelectorAll('[data-master-action]').forEach((button) => {
+        button.addEventListener('click', async () => {
+            const action = button.dataset.masterAction;
+            const entity = button.dataset.masterEntity;
+            const code = button.dataset.masterCode;
+            const isDelete = action === 'delete';
+            const prompt = isDelete
+                ? `Xóa vĩnh viễn ${code}? Thao tác này không thể hoàn tác.`
+                : `${action === 'hide' ? 'Ẩn' : 'Hiển thị lại'} ${code}?`;
+
+            if (!window.confirm(prompt)) {
+                return;
+            }
+
+            button.disabled = true;
+            try {
+                const body = new FormData();
+                body.append('csrf_token', <?= json_encode(csrf_token()) ?>);
+                body.append('entity', entity);
+                body.append('code', code);
+                body.append('action', action);
+                const response = await fetch('../ajax/manage_master_data.php', {
+                    method: 'POST',
+                    body,
+                    headers: { Accept: 'application/json' },
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || 'Không thể cập nhật dữ liệu.');
+                }
+                window.location.reload();
+            } catch (error) {
+                window.alert(error.message || 'Không thể kết nối máy chủ.');
+                button.disabled = false;
+            }
+        });
     });
 </script>
 

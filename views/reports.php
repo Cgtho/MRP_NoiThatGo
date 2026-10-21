@@ -95,7 +95,7 @@ if ($reportError === null) {
         $totalExportNvlQty = (int)$st->fetchColumn();
 
         $sr = $pdo->query(
-            'SELECT COALESCE(SUM(soLuong),0) t, COUNT(*) c FROM NGUYENVATLIEU'
+            'SELECT COALESCE(SUM(soLuong),0) t, COUNT(*) c FROM NGUYENVATLIEU WHERE trangThai = 1'
         )->fetch() ?: [];
         $totalStockNvlQty = (int)($sr['t'] ?? 0);
         $totalStockNvlKinds = (int)($sr['c'] ?? 0);
@@ -110,7 +110,7 @@ if ($reportError === null) {
         $totalExportTpQty = (int)$st->fetchColumn();
 
         $tr = $pdo->query(
-            'SELECT COALESCE(SUM(soLuong),0) t, COUNT(*) c FROM THANHPHAM'
+            'SELECT COALESCE(SUM(soLuong),0) t, COUNT(*) c FROM THANHPHAM WHERE trangThai = 1'
         )->fetch() ?: [];
         $totalStockTpQty = (int)($tr['t'] ?? 0);
         $totalStockTpKinds = (int)($tr['c'] ?? 0);
@@ -130,6 +130,7 @@ if ($reportError === null) {
                  INNER JOIN PHIEUXUATNVL p ON p.maPX = ct.maPX
                  WHERE p.trangThai = 1 AND p.ngayXuat >= :s2 AND p.ngayXuat < :e2
                  GROUP BY ct.maNVL) xu ON xu.maNVL = nvl.maNVL
+             WHERE nvl.trangThai = 1
              ORDER BY nvl.maNVL ASC'
         );
         $st->execute(['s1' => $startStr, 'e1' => $endStr, 's2' => $startStr, 'e2' => $endStr]);
@@ -144,6 +145,7 @@ if ($reportError === null) {
                  INNER JOIN PHIEUXUATTP p ON p.maPX = ct.maPX
                  WHERE p.trangThai = 1 AND p.ngayXuat >= :s AND p.ngayXuat < :e
                  GROUP BY ct.maTP) xu ON xu.maTP = tp.maTP
+             WHERE tp.trangThai = 1
              ORDER BY tp.maTP ASC'
         );
         $st->execute(['s' => $startStr, 'e' => $endStr]);

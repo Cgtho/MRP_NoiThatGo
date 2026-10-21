@@ -58,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'creat
             )->fetchColumn();
             $exportCode = 'PXN' . str_pad((string) $nextCode, 3, '0', STR_PAD_LEFT);
 
-            $materialCheck = $pdo->prepare('SELECT maNVL FROM NGUYENVATLIEU WHERE maNVL = :maNVL LIMIT 1');
+            $materialCheck = $pdo->prepare('SELECT maNVL FROM NGUYENVATLIEU WHERE maNVL = :maNVL AND trangThai = 1 LIMIT 1');
             foreach ($items as $materialCode => $quantity) {
                 $materialCheck->execute(['maNVL' => $materialCode]);
                 if (!$materialCheck->fetch()) {
@@ -83,6 +83,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'creat
             foreach ($items as $materialCode => $quantity) {
                 $insertDetail->execute(['maPX' => $exportCode, 'maNVL' => $materialCode, 'soLuong' => $quantity]);
             }
+            $markMaterialUsed = $pdo->prepare('UPDATE NGUYENVATLIEU SET isDeleted = 0 WHERE maNVL = :maNVL');
+            foreach (array_keys($items) as $materialCode) {
+                $markMaterialUsed->execute(['maNVL' => $materialCode]);
+            }
             $pdo->commit();
             header('Location: export_materials.php?status=pending&maPX=' . urlencode($exportCode));
             exit;
@@ -101,6 +105,7 @@ try {
     $materialRows = $pdo->query(
         'SELECT nvl.maNVL, nvl.tenNVL, dvt.tenDVT, nvl.soLuong
          FROM NGUYENVATLIEU nvl INNER JOIN DONVITINH dvt ON dvt.maDVT = nvl.maDVT
+         WHERE nvl.trangThai = 1
          ORDER BY nvl.maNVL ASC'
     )->fetchAll();
 

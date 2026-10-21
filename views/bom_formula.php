@@ -16,6 +16,7 @@ try {
                 COUNT(ct.maNVL) AS soLuongVatTu
          FROM THANHPHAM tp
          LEFT JOIN CHITIETTHANHPHAM ct ON ct.maTP = tp.maTP
+         WHERE tp.trangThai = 1
          GROUP BY tp.maTP, tp.tenTP, tp.donViTinh, tp.soLuong
          ORDER BY tp.maTP ASC'
     );
@@ -24,6 +25,7 @@ try {
         'SELECT nvl.maNVL, nvl.tenNVL, nvl.soLuong, dvt.tenDVT
          FROM NGUYENVATLIEU nvl
          LEFT JOIN DONVITINH dvt ON dvt.maDVT = nvl.maDVT
+         WHERE nvl.trangThai = 1
          ORDER BY nvl.tenNVL ASC'
     )->fetchAll();
     $units = $pdo->query('SELECT maDVT, tenDVT FROM DONVITINH ORDER BY tenDVT ASC')->fetchAll();
@@ -47,9 +49,14 @@ try {
         </div>
     </div>
     <?php if ($isManager): ?>
-        <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition flex items-center gap-2" id="btn-open-add-product" type="button">
-            <i class="fa-solid fa-plus"></i> Thêm Sản Phẩm & Định Mức Mới
-        </button>
+        <div class="flex items-center gap-2">
+            <a href="inventory.php?view=products" class="border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg font-medium shadow-sm transition flex items-center gap-2">
+                <i class="fa-solid fa-eye-slash"></i> Quản lý ẩn/xóa
+            </a>
+            <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition flex items-center gap-2" id="btn-open-add-product" type="button">
+                <i class="fa-solid fa-plus"></i> Thêm Sản Phẩm & Định Mức Mới
+            </button>
+        </div>
     <?php endif; ?>
 </div>
 

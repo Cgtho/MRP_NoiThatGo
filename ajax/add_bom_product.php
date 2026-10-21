@@ -51,7 +51,7 @@ try {
         exit;
     }
 
-    $materialCheck = $pdo->prepare('SELECT maNVL FROM NGUYENVATLIEU WHERE maNVL = :maNVL LIMIT 1');
+    $materialCheck = $pdo->prepare('SELECT maNVL FROM NGUYENVATLIEU WHERE maNVL = :maNVL AND trangThai = 1 LIMIT 1');
     $insertBom = $pdo->prepare(
         'INSERT INTO CHITIETTHANHPHAM (maTP, maNVL, soLuong)
          VALUES (:maTP, :maNVL, :soLuong)'
@@ -65,8 +65,8 @@ try {
     )->fetchColumn();
     $maTP = 'TP' . str_pad((string) $nextProductNumber, 3, '0', STR_PAD_LEFT);
     $insertProduct = $pdo->prepare(
-        'INSERT INTO THANHPHAM (maTP, tenTP, donViTinh, soLuong)
-         VALUES (:maTP, :tenTP, :donViTinh, 0)'
+        'INSERT INTO THANHPHAM (maTP, tenTP, donViTinh, soLuong, isDeleted, trangThai)
+         VALUES (:maTP, :tenTP, :donViTinh, 0, 1, 1)'
     );
     $insertProduct->execute([
         'maTP' => $maTP,
@@ -84,7 +84,11 @@ try {
             'maNVL' => $material['maNVL'],
             'soLuong' => $material['soLuong'],
         ]);
+        $markMaterialUsed = $pdo->prepare('UPDATE NGUYENVATLIEU SET isDeleted = 0 WHERE maNVL = :maNVL');
+        $markMaterialUsed->execute(['maNVL' => $material['maNVL']]);
     }
+    $pdo->prepare('UPDATE THANHPHAM SET isDeleted = 0 WHERE maTP = :maTP')
+        ->execute(['maTP' => $maTP]);
     $pdo->commit();
 
     echo json_encode(['success' => true, 'message' => 'Đã thêm thành phẩm và định mức.']);

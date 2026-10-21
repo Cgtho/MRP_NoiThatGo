@@ -52,7 +52,7 @@ try {
             } else {
                 $pdo->beginTransaction();
                 $check = $pdo->prepare(
-                    'SELECT maTP FROM THANHPHAM WHERE maTP = :maTP'
+                    'SELECT maTP FROM THANHPHAM WHERE maTP = :maTP AND trangThai = 1'
                 );
                 $bomStatement = $pdo->prepare(
                     'SELECT bom.maNVL, bom.soLuong, COALESCE(n.soLuong, 0) AS tonKho
@@ -99,6 +99,10 @@ try {
                 );
                 foreach ($items as $maTP => $quantity) {
                     $detail->execute(['maYC' => $orderCode, 'maTP' => $maTP, 'soLuong' => $quantity]);
+                }
+                $markProductUsed = $pdo->prepare('UPDATE THANHPHAM SET isDeleted = 0 WHERE maTP = :maTP');
+                foreach (array_keys($items) as $maTP) {
+                    $markProductUsed->execute(['maTP' => $maTP]);
                 }
                 $pdo->commit();
                 header('Location: production_orders.php?status=' . ($hasEnoughMaterials ? 'working' : 'pending') . '&maYC=' . urlencode($orderCode));
@@ -252,7 +256,7 @@ try {
     }
 
     if ($isManager) {
-        $productRows = $pdo->query('SELECT maTP, tenTP, donViTinh FROM THANHPHAM ORDER BY maTP')->fetchAll();
+        $productRows = $pdo->query('SELECT maTP, tenTP, donViTinh FROM THANHPHAM WHERE trangThai = 1 ORDER BY maTP')->fetchAll();
         $nextOrderNumber = (int) $pdo->query(
             "SELECT COALESCE(MAX(CAST(SUBSTRING(maYC, 3) AS UNSIGNED)), 0) + 1
              FROM YEUCAU WHERE maYC REGEXP '^YC[0-9]+$'"
