@@ -7,9 +7,11 @@ require_once '../config/db.php';
 require_once '../includes/csrf.php';
 
 $isManager = (int) ($_SESSION['role'] ?? 1) === 0;
-$currentUser = (string) ($_SESSION['current_user'] ?? '');
-$statusFilter = $_GET['status'] ?? 'all';
-$statusFilter = in_array($statusFilter, ['all', 'pending', 'approved'], true) ? $statusFilter : 'all';
+if (!$isManager) {
+    http_response_code(403);
+    exit('Bạn không có quyền truy cập chức năng nhập kho nguyên vật liệu.');
+}
+
 $selectedCode = strtoupper(trim((string) ($_GET['maPN'] ?? '')));
 $errorMessage = null;
 $formError = null;
@@ -26,7 +28,12 @@ $escape = static function ($value): string {
     return htmlspecialchars((string) ($value ?? ''), ENT_QUOTES, 'UTF-8');
 };
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'create_import') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'create_import' && !$isManager) {
+    http_response_code(403);
+    exit('Bạn không có quyền tạo phiếu nhập kho.');
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'create_import' && $isManager) {
     csrf_require_json();
     $materialCodes = $_POST['maNVL'] ?? [];
     $quantities = $_POST['soLuong'] ?? [];
@@ -68,12 +75,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'creat
             }
 
             $insertReceipt = $pdo->prepare(
-                'INSERT INTO PHIEUNHAPKHO (maPN, ngayNhap, maNV, trangThai, ghiChu)
-                 VALUES (:maPN, NOW(), :maNV, 0, :ghiChu)'
+                'INSERT INTO PHIEUNHAPKHO (maPN, ngayNhap, ghiChu)
+                 VALUES (:maPN, NOW(), :ghiChu)'
             );
             $insertReceipt->execute([
                 'maPN' => $receiptCode,
-                'maNV' => $currentUser,
                 'ghiChu' => $note !== '' ? $note : null,
             ]);
 
@@ -84,12 +90,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'creat
             foreach ($items as $materialCode => $quantity) {
                 $insertDetail->execute(['maPN' => $receiptCode, 'maNVL' => $materialCode, 'soLuong' => $quantity]);
             }
+            $updateStock = $pdo->prepare(
+                'UPDATE NGUYENVATLIEU SET soLuong = soLuong + :soLuong WHERE maNVL = :maNVL'
+            );
+            foreach ($items as $materialCode => $quantity) {
+                $updateStock->execute(['soLuong' => $quantity, 'maNVL' => $materialCode]);
+            }
+            $pendingOrdersStatement = $pdo->query(
+                'SELECT yc.maYC, bom.maNVL,
+                        SUM(bom.soLuong * ct.soLuong) AS requiredAmount,
+                        n.soLuong AS stockAmount
+                 FROM YEUCAU yc
+                 INNER JOIN CHITIETYEUCAU ct ON ct.maYC = yc.maYC
+                 INNER JOIN CHITIETTHANHPHAM bom ON bom.maTP = ct.maTP
+                 INNER JOIN NGUYENVATLIEU n ON n.maNVL = bom.maNVL
+                 WHERE yc.trangThai = 0
+                 GROUP BY yc.maYC, bom.maNVL, n.soLuong'
+            );
+            $pendingOrders = [];
+            foreach ($pendingOrdersStatement->fetchAll() as $materialRequirement) {
+                $orderCode = (string) $materialRequirement['maYC'];
+                $pendingOrders[$orderCode] = $pendingOrders[$orderCode] ?? true;
+                if ((float) $materialRequirement['requiredAmount'] > (float) $materialRequirement['stockAmount']) {
+                    $pendingOrders[$orderCode] = false;
+                }
+            }
+            $activateOrder = $pdo->prepare(
+                'UPDATE YEUCAU SET trangThai = 1 WHERE maYC = :maYC AND trangThai = 0'
+            );
+            foreach ($pendingOrders as $orderCode => $hasEnoughMaterials) {
+                if ($hasEnoughMaterials) {
+                    $activateOrder->execute(['maYC' => $orderCode]);
+                }
+            }
             $markMaterialUsed = $pdo->prepare('UPDATE NGUYENVATLIEU SET isDeleted = 0 WHERE maNVL = :maNVL');
             foreach (array_keys($items) as $materialCode) {
                 $markMaterialUsed->execute(['maNVL' => $materialCode]);
             }
             $pdo->commit();
-            header('Location: import_materials.php?status=pending&maPN=' . urlencode($receiptCode));
+            header('Location: import_materials.php?maPN=' . urlencode($receiptCode));
             exit;
         } catch (Throwable $exception) {
             if ($pdo->inTransaction()) {
@@ -110,39 +149,27 @@ try {
          ORDER BY nvl.maNVL ASC'
     )->fetchAll();
 
-    $visibilityCondition = '1 = 1';
     $listStatement = $pdo->prepare(
-        'SELECT p.maPN, p.ngayNhap, p.trangThai, p.maNV, p.maQL, p.ngayDuyet, p.ghiChu,
-                nv.hoTen AS tenNV, ql.hoTen AS tenQL, COUNT(ct.maNVL) AS soMatHang,
+        'SELECT p.maPN, p.ngayNhap, p.ghiChu, COUNT(ct.maNVL) AS soMatHang,
                 COALESCE(SUM(ct.soLuong), 0) AS tongSoLuong
          FROM PHIEUNHAPKHO p
-         LEFT JOIN NHANVIEN nv ON nv.maNV = p.maNV
-         LEFT JOIN NHANVIEN ql ON ql.maNV = p.maQL
          LEFT JOIN CHITIETPHIEUNHAP ct ON ct.maPN = p.maPN
-         WHERE ' . $visibilityCondition . '
-         GROUP BY p.maPN, p.ngayNhap, p.trangThai, p.maNV, p.maQL, p.ngayDuyet, p.ghiChu, nv.hoTen, ql.hoTen
+         GROUP BY p.maPN, p.ngayNhap, p.ghiChu
          ORDER BY p.ngayNhap DESC, p.maPN DESC'
     );
     $listStatement->execute([]);
     $allReceiptRows = $listStatement->fetchAll();
-    $receiptRows = array_values(array_filter($allReceiptRows, static function (array $row) use ($statusFilter): bool {
-        return $statusFilter === 'all'
-            || ($statusFilter === 'pending' && (int) $row['trangThai'] === 0)
-            || ($statusFilter === 'approved' && (int) $row['trangThai'] === 1);
-    }));
+    $receiptRows = $allReceiptRows;
 
     if ($selectedCode !== '') {
         $detailStatement = $pdo->prepare(
-            'SELECT p.maPN, p.ngayNhap, p.trangThai, p.maNV, p.maQL, p.ngayDuyet, p.ghiChu,
-                    nv.hoTen AS tenNV, ql.hoTen AS tenQL,
+            'SELECT p.maPN, p.ngayNhap, p.ghiChu,
                     ct.maNVL, ct.soLuong, nvl.tenNVL, dvt.tenDVT, nvl.soLuong AS tonKho
              FROM PHIEUNHAPKHO p
-             LEFT JOIN NHANVIEN nv ON nv.maNV = p.maNV
-             LEFT JOIN NHANVIEN ql ON ql.maNV = p.maQL
              INNER JOIN CHITIETPHIEUNHAP ct ON ct.maPN = p.maPN
              INNER JOIN NGUYENVATLIEU nvl ON nvl.maNVL = ct.maNVL
              INNER JOIN DONVITINH dvt ON dvt.maDVT = nvl.maDVT
-             WHERE p.maPN = :maPN AND ' . $visibilityCondition . '
+             WHERE p.maPN = :maPN
              ORDER BY ct.maNVL ASC'
         );
         $detailStatement->execute(['maPN' => $selectedCode]);
@@ -151,7 +178,7 @@ try {
     }
 
     if ($selectedReceipt === null && $receiptRows !== []) {
-        header('Location: import_materials.php?status=' . urlencode($statusFilter) . '&maPN=' . urlencode((string) $receiptRows[0]['maPN']));
+        header('Location: import_materials.php?maPN=' . urlencode((string) $receiptRows[0]['maPN']));
         exit;
     }
 } catch (PDOException $exception) {
@@ -159,35 +186,26 @@ try {
 }
 
 $allCount = count($allReceiptRows ?? []);
-$pendingCount = count(array_filter($allReceiptRows ?? [], static fn (array $row): bool => (int) $row['trangThai'] === 0));
-$approvedCount = count(array_filter($allReceiptRows ?? [], static fn (array $row): bool => (int) $row['trangThai'] === 1));
 require_once '../includes/header.php';
 ?>
 
 <div class="flex justify-between items-center mb-6">
-    <div class="flex items-center gap-3"><div class="bg-blue-100 text-blue-600 p-2 rounded-lg text-xl"><i class="fa-solid fa-box-open"></i></div><div><h2 class="text-xl font-bold text-slate-800">Nhập Kho Nguyên Vật Liệu</h2><p class="text-xs text-slate-500">Nhân viên lập phiếu, quản lý kiểm tra và duyệt trước khi cộng tồn kho.</p></div></div>
-    <button id="btn-open-import" type="button" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition flex items-center gap-2"><i class="fa-solid fa-plus"></i> Tạo Phiếu Nhập Kho</button>
+    <div class="flex items-center gap-3"><div class="bg-blue-100 text-blue-600 p-2 rounded-lg text-xl"><i class="fa-solid fa-box-open"></i></div><div><h2 class="text-xl font-bold text-slate-800">Nhập Kho Nguyên Vật Liệu</h2><p class="text-xs text-slate-500">Quản lý lập phiếu và cập nhật tồn kho.</p></div></div>
+    <?php if ($isManager): ?><button id="btn-open-import" type="button" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition flex items-center gap-2"><i class="fa-solid fa-plus"></i> Tạo Phiếu Nhập Kho</button><?php endif; ?>
 </div>
 <?php if ($formError !== null): ?><div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert"><?= $escape($formError) ?></div><?php endif; ?>
 <?php if ($errorMessage !== null): ?><div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert"><?= $escape($errorMessage) ?></div><?php endif; ?>
 
-<div class="flex items-center gap-2 mb-4 border-b border-slate-200 pb-2">
-    <?php $filters = ['all' => ['Tất cả', $allCount, ''], 'pending' => ['Chưa duyệt', $pendingCount, 'fa-regular fa-clock'], 'approved' => ['Đã duyệt', $approvedCount, 'fa-regular fa-circle-check']]; foreach ($filters as $filterKey => [$label, $count, $icon]): ?>
-        <a href="?status=<?= $filterKey ?>" class="<?= $statusFilter === $filterKey ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-800' ?> text-[13px] font-medium px-4 py-1.5 rounded-full flex items-center gap-2 transition"><?php if ($icon): ?><i class="<?= $icon ?>"></i><?php endif; ?><?= $escape($label) ?> (<?= $count ?>)</a>
-    <?php endforeach; ?>
-</div>
-
 <div class="flex gap-6 items-start">
     <div class="w-1/3 shrink-0 space-y-3">
-        <?php if ($receiptRows === []): ?><div class="bg-white border border-slate-200 rounded-xl p-5 text-sm text-slate-500">Không có phiếu nhập trong trạng thái này.</div><?php endif; ?>
-        <?php foreach ($receiptRows as $row): $rowApproved = (int) $row['trangThai'] === 1; ?><a href="?status=<?= $statusFilter ?>&maPN=<?= urlencode((string) $row['maPN']) ?>" class="block bg-white <?= (string) $row['maPN'] === $selectedCode ? 'border-2 border-blue-400' : 'border border-slate-200 hover:border-blue-300' ?> rounded-xl p-4 shadow-sm transition"><div class="flex justify-between items-start mb-2"><div class="flex items-center gap-2"><span class="bg-slate-100 text-slate-700 text-xs font-bold px-2 py-0.5 rounded"><?= $escape($row['maPN']) ?></span><span class="<?= $rowApproved ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' ?> text-[10px] font-medium px-2 py-0.5 rounded"><?= $rowApproved ? 'Đã duyệt' : 'Chưa duyệt' ?></span></div><?php if (!$rowApproved && $isManager): ?><span class="bg-red-50 text-red-600 text-[10px] font-medium px-2 py-0.5 rounded border border-red-100">Cần duyệt</span><?php endif; ?></div><div class="text-sm text-slate-700 mb-1 font-medium"><?= (int) $row['soMatHang'] ?> mặt hàng, tổng <?= (int) $row['tongSoLuong'] ?></div><div class="text-[11px] text-slate-400"><?= $escape($row['ngayNhap']) ?> &bull; Lập bởi: <?= $escape($row['tenNV'] ?: $row['maNV']) ?></div></a><?php endforeach; ?>
+        <?php if ($receiptRows === []): ?><div class="bg-white border border-slate-200 rounded-xl p-5 text-sm text-slate-500">Chưa có phiếu nhập.</div><?php endif; ?>
+        <?php foreach ($receiptRows as $row): ?><a href="?maPN=<?= urlencode((string) $row['maPN']) ?>" class="block bg-white <?= (string) $row['maPN'] === $selectedCode ? 'border-2 border-blue-400' : 'border border-slate-200 hover:border-blue-300' ?> rounded-xl p-4 shadow-sm transition"><div class="flex justify-between items-start mb-2"><span class="bg-slate-100 text-slate-700 text-xs font-bold px-2 py-0.5 rounded"><?= $escape($row['maPN']) ?></span></div><div class="text-sm text-slate-700 mb-1 font-medium"><?= (int) $row['soMatHang'] ?> mặt hàng, tổng <?= (int) $row['tongSoLuong'] ?></div><div class="text-[11px] text-slate-400"><?= $escape($row['ngayNhap']) ?></div></a><?php endforeach; ?>
     </div>
 
     <div class="w-2/3 bg-white border border-slate-200 rounded-xl shadow-sm p-6">
-        <?php if ($selectedReceipt === null): ?><div class="py-12 text-center text-sm text-slate-500">Chọn một phiếu để xem chi tiết.</div><?php else: $approved = (int) $selectedReceipt['trangThai'] === 1; ?>
-            <div class="flex justify-between items-start border-b border-slate-100 pb-4 mb-4"><div><div class="flex items-center gap-3 mb-3"><span class="bg-blue-50 text-blue-700 font-bold text-xs px-2 py-1 rounded border border-blue-100">MÃ PHIẾU: <?= $escape($selectedReceipt['maPN']) ?></span><span class="text-slate-400 text-xs"><i class="fa-regular fa-calendar"></i> <?= $escape($selectedReceipt['ngayNhap']) ?></span></div><div class="grid grid-cols-2 gap-4 mb-2"><div><div class="text-[11px] text-slate-400">Nhân viên lập:</div><div class="text-sm font-semibold text-slate-800"><?= $escape($selectedReceipt['tenNV'] ?: $selectedReceipt['maNV']) ?></div></div><div><div class="text-[11px] text-slate-400">Quản lý duyệt:</div><div class="text-sm font-semibold text-slate-800"><?= $escape($selectedReceipt['tenQL'] ?: ($approved ? $selectedReceipt['maQL'] : 'Chưa duyệt')) ?></div></div></div><div class="text-sm text-slate-600">Ghi chú: <span class="font-medium text-slate-800"><?= $escape($selectedReceipt['ghiChu'] ?: 'Không có') ?></span></div></div><span class="border <?= $approved ? 'border-emerald-200 bg-emerald-50 text-emerald-600' : 'border-amber-200 bg-amber-50 text-amber-700' ?> text-xs px-3 py-1.5 rounded-full font-medium flex items-center gap-1"><i class="<?= $approved ? 'fa-regular fa-circle-check' : 'fa-regular fa-clock' ?>"></i> <?= $approved ? 'Đã duyệt, đã cộng kho' : 'Chờ quản lý duyệt' ?></span></div>
+        <?php if ($selectedReceipt === null): ?><div class="py-12 text-center text-sm text-slate-500">Chọn một phiếu để xem chi tiết.</div><?php else: ?>
+            <div class="flex justify-between items-start border-b border-slate-100 pb-4 mb-4"><div><div class="flex items-center gap-3 mb-3"><span class="bg-blue-50 text-blue-700 font-bold text-xs px-2 py-1 rounded border border-blue-100">MÃ PHIẾU: <?= $escape($selectedReceipt['maPN']) ?></span><span class="text-slate-400 text-xs"><i class="fa-regular fa-calendar"></i> <?= $escape($selectedReceipt['ngayNhap']) ?></span></div><div class="text-sm text-slate-600">Ghi chú: <span class="font-medium text-slate-800"><?= $escape($selectedReceipt['ghiChu'] ?: 'Không có') ?></span></div></div><span class="border border-emerald-200 bg-emerald-50 text-emerald-600 text-xs px-3 py-1.5 rounded-full font-medium flex items-center gap-1"><i class="fa-regular fa-circle-check"></i> Đã cập nhật tồn kho</span></div>
             <div class="mb-3"><h4 class="font-bold text-slate-700 text-xs uppercase">DANH SÁCH VẬT TƯ NHẬP</h4></div><div class="overflow-x-auto rounded-lg border border-slate-200"><table class="w-full text-left text-sm"><thead class="bg-slate-50 text-slate-500 text-[10px] uppercase font-semibold"><tr><th class="px-4 py-3 border-b border-slate-200">Mã NVL</th><th class="px-4 py-3 border-b border-slate-200">Tên nguyên vật liệu</th><th class="px-4 py-3 border-b border-slate-200">ĐVT</th><th class="px-4 py-3 text-center border-b border-slate-200">Số lượng nhập</th><th class="px-4 py-3 text-right border-b border-slate-200">Tồn kho hiện tại</th></tr></thead><tbody class="divide-y divide-slate-100 text-xs"><?php foreach ($detailRows as $detail): ?><tr class="hover:bg-slate-50 transition"><td class="px-4 py-3 font-bold text-slate-800"><?= $escape($detail['maNVL']) ?></td><td class="px-4 py-3 text-slate-700"><?= $escape($detail['tenNVL']) ?></td><td class="px-4 py-3 text-slate-500"><?= $escape($detail['tenDVT']) ?></td><td class="px-4 py-3 text-center font-bold text-blue-600">+<?= (int) $detail['soLuong'] ?></td><td class="px-4 py-3 text-right font-medium text-slate-700"><?= (int) $detail['tonKho'] ?> <?= $escape($detail['tenDVT']) ?></td></tr><?php endforeach; ?></tbody></table></div>
-            <?php if ($isManager && !$approved): ?><form class="approve-import-form mt-5 flex justify-end" action="../ajax/approve_import.php" method="post"><input type="hidden" name="csrf_token" value="<?= $escape(csrf_token()) ?>"><input type="hidden" name="maPN" value="<?= $escape($selectedReceipt['maPN']) ?>"><button type="submit" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"><i class="fa-solid fa-check mr-1"></i> Duyệt và cộng tồn kho</button></form><?php endif; ?>
         <?php endif; ?>
     </div>
 </div>

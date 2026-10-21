@@ -18,17 +18,6 @@ try {
     if ($isManager) {
         $queries = [
             [
-                'sql' => 'SELECT maPN AS code, ngayNhap AS createdAt
-                         FROM PHIEUNHAPKHO
-                         WHERE trangThai = 0
-                         ORDER BY ngayNhap DESC, maPN DESC',
-                'title' => 'Phiếu nhập kho chờ duyệt',
-                'message' => 'Có phiếu nhập NVL cần xử lý.',
-                'href' => '../views/import_materials.php?status=pending&maPN=',
-                'icon' => 'fa-box-open',
-                'color' => 'text-emerald-500',
-            ],
-            [
                 'sql' => 'SELECT maPX AS code, ngayXuat AS createdAt
                          FROM PHIEUXUATNVL
                          WHERE trangThai = 0
@@ -53,17 +42,6 @@ try {
         ];
     } else {
         $queries = [
-            [
-                'sql' => 'SELECT maPN AS code, ngayNhap AS createdAt
-                         FROM PHIEUNHAPKHO
-                         WHERE trangThai = 0 AND maNV = :maNV
-                         ORDER BY ngayNhap DESC, maPN DESC',
-                'title' => 'Phiếu nhập kho đang chờ duyệt',
-                'message' => 'Phiếu nhập NVL của bạn đang được xử lý.',
-                'href' => '../views/import_materials.php?status=pending&maPN=',
-                'icon' => 'fa-box-open',
-                'color' => 'text-emerald-500',
-            ],
             [
                 'sql' => 'SELECT maPX AS code, ngayXuat AS createdAt
                          FROM PHIEUXUATNVL

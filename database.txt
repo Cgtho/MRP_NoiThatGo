@@ -124,21 +124,7 @@ CREATE TABLE IF NOT EXISTS CHITIETTHANHPHAM (
 CREATE TABLE IF NOT EXISTS PHIEUNHAPKHO (
     maPN VARCHAR(20) PRIMARY KEY,
     ngayNhap DATETIME NOT NULL,
-    maNV VARCHAR(10) NOT NULL,
-    trangThai TINYINT NOT NULL DEFAULT 0,
-    maQL VARCHAR(10) NULL,
-    ngayDuyet DATETIME NULL,
-    ghiChu VARCHAR(255) NULL,
-
-    CONSTRAINT fk_pn_nv
-        FOREIGN KEY (maNV)
-        REFERENCES NHANVIEN(maNV)
-        ON UPDATE CASCADE,
-
-    CONSTRAINT fk_pn_ql
-        FOREIGN KEY (maQL)
-        REFERENCES NHANVIEN(maNV)
-        ON UPDATE CASCADE
+    ghiChu VARCHAR(255) NULL
 ) ENGINE=InnoDB;
 
 
@@ -605,13 +591,13 @@ INSERT INTO CHITIETTHANHPHAM
 ('TP011', 'NVL025', 6);
 
 -- ==========================================================
--- 19. PHIẾU NHẬP KHO CHỜ DUYỆT
+-- 19. PHIẾU NHẬP KHO
 -- ==========================================================
 
 INSERT INTO PHIEUNHAPKHO
-(maPN, ngayNhap, maNV, trangThai, maQL, ngayDuyet, ghiChu) VALUES
+(maPN, ngayNhap, ghiChu) VALUES
 
-('PN001', '2026-10-09 08:00:00', 'NV001', 0, NULL, NULL,
+('PN001', '2026-10-09 08:00:00',
  'Nhập bổ sung gỗ MDF và vít gỗ từ nhà cung cấp mẫu');
 
 

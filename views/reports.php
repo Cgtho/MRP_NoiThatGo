@@ -80,7 +80,7 @@ if ($reportError === null) {
             'SELECT COALESCE(SUM(ct.soLuong),0)
              FROM CHITIETPHIEUNHAP ct
              INNER JOIN PHIEUNHAPKHO p ON p.maPN = ct.maPN
-             WHERE p.trangThai = 1 AND p.ngayNhap >= :s AND p.ngayNhap < :e'
+             WHERE p.ngayNhap >= :s AND p.ngayNhap < :e'
         );
         $st->execute(['s' => $startStr, 'e' => $endStr]);
         $totalImportQty = (int)$st->fetchColumn();
@@ -123,7 +123,7 @@ if ($reportError === null) {
              LEFT JOIN (SELECT ct.maNVL, SUM(ct.soLuong) t
                  FROM CHITIETPHIEUNHAP ct
                  INNER JOIN PHIEUNHAPKHO p ON p.maPN = ct.maPN
-                 WHERE p.trangThai = 1 AND p.ngayNhap >= :s1 AND p.ngayNhap < :e1 GROUP BY ct.maNVL) nh
+                 WHERE p.ngayNhap >= :s1 AND p.ngayNhap < :e1 GROUP BY ct.maNVL) nh
                  ON nh.maNVL = nvl.maNVL
              LEFT JOIN (SELECT ct.maNVL, SUM(ct.soLuong) t
                  FROM CHITIETPHIEUXUATNVL ct
