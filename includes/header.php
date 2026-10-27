@@ -9,10 +9,17 @@ if (!isset($_SESSION['current_user'], $_SESSION['user_name'], $_SESSION['role'])
 }
 
 require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/csrf.php';
 
 $isManager = (int) $_SESSION['role'] === 0;
-$roleLabel = $isManager ? 'Quản lý kho' : 'Nhân viên kho';
-$roleIcon = $isManager ? 'fa-crown' : 'fa-user';
+$isAdmin = (int) $_SESSION['role'] === 2;
+$roleLabel = $isAdmin ? 'Quản trị hệ thống' : ($isManager ? 'Quản lý kho' : 'Nhân viên kho');
+$roleIcon = $isAdmin ? 'fa-user-shield' : ($isManager ? 'fa-crown' : 'fa-user');
+
+if ($isAdmin && basename($_SERVER['PHP_SELF']) !== 'employees.php') {
+    header('Location: employees.php');
+    exit;
+}
 ?>
 <!DOCTYPE html>
 <html lang="vi">
@@ -46,6 +53,7 @@ $roleIcon = $isManager ? 'fa-crown' : 'fa-user';
     </div>
     
     <div class="flex items-center gap-4">
+        <?php if (!$isAdmin): ?>
         <div class="relative">
             <button id="notificationButton" type="button" data-notifications-url="../ajax/get_notifications.php" class="relative flex h-9 w-9 items-center justify-center rounded-md text-slate-300 transition hover:bg-slate-800 hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-400" aria-label="Mở thông báo" aria-expanded="false" aria-controls="notificationPanel">
                 <i class="fa-regular fa-bell text-xl"></i>
@@ -61,12 +69,17 @@ $roleIcon = $isManager ? 'fa-crown' : 'fa-user';
                 </div>
             </div>
         </div>
+        <?php endif; ?>
         
         <div class="flex items-center gap-2 ml-2">
             <div class="bg-slate-800 px-3 py-1.5 rounded-md border border-slate-600 flex items-center gap-2 text-amber-400">
                 <i class="fa-solid <?= $roleIcon ?>"></i>
                 <span><?= htmlspecialchars($roleLabel, ENT_QUOTES, 'UTF-8') ?>: <?= htmlspecialchars($_SESSION['user_name'], ENT_QUOTES, 'UTF-8') ?></span>
             </div>
+            <button id="openChangePasswordModal" type="button" class="bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-md flex items-center gap-2 text-white transition" title="Đổi mật khẩu">
+                <i class="fa-solid fa-key"></i>
+                <span class="hidden xl:inline">Đổi mật khẩu</span>
+            </button>
             <form id="logoutForm" action="../ajax/logout.php" method="post">
                 <button type="submit" class="bg-rose-600 hover:bg-rose-500 px-3 py-1.5 rounded-md flex items-center gap-2 text-white transition" title="Đăng xuất">
                     <i class="fa-solid fa-right-from-bracket"></i>
@@ -76,6 +89,31 @@ $roleIcon = $isManager ? 'fa-crown' : 'fa-user';
         </div>
     </div>
 </header>
+
+<div id="changePasswordModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 items-center justify-center px-4">
+    <div class="bg-white rounded-xl w-full max-w-md shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="changePasswordTitle">
+        <div class="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+            <h2 id="changePasswordTitle" class="font-bold text-slate-800"><i class="fa-solid fa-key text-blue-600 mr-2"></i>Đổi mật khẩu</h2>
+            <button id="closeChangePasswordModal" type="button" class="text-slate-400 hover:text-slate-700" aria-label="Đóng">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <form id="changePasswordForm" action="../ajax/change_password.php" method="post" class="p-5">
+            <?= csrf_field() ?>
+            <label for="currentPassword" class="mb-1.5 block text-sm font-medium text-slate-700">Mật khẩu hiện tại</label>
+            <input id="currentPassword" name="currentPassword" type="password" autocomplete="current-password" required class="mb-4 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
+            <label for="newPassword" class="mb-1.5 block text-sm font-medium text-slate-700">Mật khẩu mới</label>
+            <input id="newPassword" name="newPassword" type="password" minlength="6" autocomplete="new-password" required class="mb-4 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
+            <label for="confirmPassword" class="mb-1.5 block text-sm font-medium text-slate-700">Nhập lại mật khẩu mới</label>
+            <input id="confirmPassword" name="confirmPassword" type="password" minlength="6" autocomplete="new-password" required class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
+            <p id="changePasswordMessage" class="mt-4 hidden rounded-lg px-3 py-2 text-sm" role="alert"></p>
+            <div class="mt-5 flex justify-end gap-2">
+                <button id="cancelChangePassword" type="button" class="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">Hủy</button>
+                <button type="submit" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">Cập nhật mật khẩu</button>
+            </div>
+        </form>
+    </div>
+</div>
 
 <div class="flex flex-1 overflow-hidden">
 <?php include 'sidebar.php'; ?>

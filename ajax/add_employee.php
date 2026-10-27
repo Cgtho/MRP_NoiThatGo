@@ -2,7 +2,7 @@
 session_start();
 header('Content-Type: application/json; charset=utf-8');
 
-if (!isset($_SESSION['current_user'], $_SESSION['role']) || (int) $_SESSION['role'] !== 0) {
+if (!isset($_SESSION['current_user'], $_SESSION['role']) || !in_array((int) $_SESSION['role'], [0, 2], true)) {
     http_response_code(403);
     echo json_encode(['success' => false, 'message' => 'Bạn không có quyền thêm nhân viên.']);
     exit;
@@ -19,19 +19,10 @@ require_once __DIR__ . '/../includes/csrf.php';
 
 csrf_require_json();
 
-$maNV = strtoupper(trim((string) ($_POST['maNV'] ?? '')));
 $hoTen = trim((string) ($_POST['hoTen'] ?? ''));
 $vaiTro = (string) ($_POST['vaiTro'] ?? '');
-$trangThai = (string) ($_POST['trangThai'] ?? '1');
 $sdt = trim((string) ($_POST['sdt'] ?? ''));
 $diaChi = trim((string) ($_POST['diaChi'] ?? ''));
-$matKhau = (string) ($_POST['matKhau'] ?? '');
-
-if (!preg_match('/^[A-Z0-9]{2,10}$/', $maNV)) {
-    http_response_code(422);
-    echo json_encode(['success' => false, 'message' => 'Mã nhân viên gồm 2 đến 10 ký tự chữ hoặc số.']);
-    exit;
-}
 
 if ($hoTen === '' || mb_strlen($hoTen) > 50) {
     http_response_code(422);
@@ -39,15 +30,11 @@ if ($hoTen === '' || mb_strlen($hoTen) > 50) {
     exit;
 }
 
-if (!in_array($vaiTro, ['0', '1'], true)) {
+if (!in_array($vaiTro, ['0', '1', '2'], true)
+    || ((int) $_SESSION['role'] === 0 && $vaiTro !== '1')
+    || ($vaiTro === '2' && (int) $_SESSION['role'] !== 2)) {
     http_response_code(422);
-    echo json_encode(['success' => false, 'message' => 'Vai trò không hợp lệ.']);
-    exit;
-}
-
-if (!in_array($trangThai, ['0', '1'], true)) {
-    http_response_code(422);
-    echo json_encode(['success' => false, 'message' => 'Trạng thái không hợp lệ.']);
+    echo json_encode(['success' => false, 'message' => 'Bạn không có quyền tạo tài khoản với vai trò này.']);
     exit;
 }
 
@@ -63,20 +50,32 @@ if ($diaChi === '' || mb_strlen($diaChi) > 50) {
     exit;
 }
 
-if (mb_strlen($matKhau) < 6) {
-    http_response_code(422);
-    echo json_encode(['success' => false, 'message' => 'Mật khẩu phải có ít nhất 6 ký tự.']);
-    exit;
-}
-
 try {
-    $check = $pdo->prepare('SELECT maNV FROM NHANVIEN WHERE maNV = :maNV LIMIT 1');
-    $check->execute(['maNV' => $maNV]);
-    if ($check->fetch()) {
+    $prefix = ['0' => 'QL', '1' => 'NV', '2' => 'AD'][$vaiTro];
+    $pdo->beginTransaction();
+
+    $lastCode = $pdo->prepare(
+        'SELECT maNV
+         FROM NHANVIEN
+         WHERE maNV LIKE :prefix
+         ORDER BY CAST(SUBSTRING(maNV, 3) AS UNSIGNED) DESC
+         LIMIT 1
+         FOR UPDATE'
+    );
+    $lastCode->execute(['prefix' => $prefix . '%']);
+    $lastCodeValue = (string) ($lastCode->fetchColumn() ?: '');
+    $lastNumber = preg_match('/^' . $prefix . '([0-9]{3})$/', $lastCodeValue, $matches)
+        ? (int) $matches[1]
+        : 0;
+
+    if ($lastNumber >= 999) {
+        $pdo->rollBack();
         http_response_code(409);
-        echo json_encode(['success' => false, 'message' => 'Mã nhân viên này đã tồn tại.']);
+        echo json_encode(['success' => false, 'message' => 'Đã đạt giới hạn số mã tài khoản cho vai trò này.']);
         exit;
     }
+
+    $maNV = $prefix . str_pad((string) ($lastNumber + 1), 3, '0', STR_PAD_LEFT);
 
     $stmt = $pdo->prepare(
         'INSERT INTO NHANVIEN (maNV, hoTen, vaiTro, trangThai, matKhau, sdt, diaChi)
@@ -86,14 +85,25 @@ try {
         'maNV' => $maNV,
         'hoTen' => $hoTen,
         'vaiTro' => (int) $vaiTro,
-        'trangThai' => (int) $trangThai,
-        'matKhau' => password_hash($matKhau, PASSWORD_DEFAULT),
+        'trangThai' => 1,
+        'matKhau' => password_hash('123456', PASSWORD_DEFAULT),
         'sdt' => $sdt,
         'diaChi' => $diaChi,
     ]);
+    $pdo->commit();
 
-    echo json_encode(['success' => true, 'message' => 'Đã thêm nhân viên.']);
+    echo json_encode(['success' => true, 'message' => "Đã thêm tài khoản {$maNV}.", 'maNV' => $maNV]);
 } catch (PDOException $e) {
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
+
+    if ($e->getCode() === '23000') {
+        http_response_code(409);
+        echo json_encode(['success' => false, 'message' => 'Không thể tạo mã tài khoản do bị trùng. Vui lòng thử lại.']);
+        exit;
+    }
+
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => 'Không thể lưu nhân viên.']);
 }

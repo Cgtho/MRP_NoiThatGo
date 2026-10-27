@@ -2,7 +2,7 @@
 session_start();
 header('Content-Type: application/json; charset=utf-8');
 
-if (!isset($_SESSION['current_user'], $_SESSION['role']) || (int) $_SESSION['role'] !== 0) {
+if (!isset($_SESSION['current_user'], $_SESSION['role']) || !in_array((int) $_SESSION['role'], [0, 2], true)) {
     http_response_code(403);
     echo json_encode(['success' => false, 'message' => 'Bạn không có quyền chỉnh sửa nhân viên.']);
     exit;
@@ -39,7 +39,7 @@ if ($hoTen === '' || mb_strlen($hoTen) > 50) {
     exit;
 }
 
-if (!in_array($vaiTro, ['0', '1'], true)) {
+if (!in_array($vaiTro, ['0', '1', '2'], true)) {
     http_response_code(422);
     echo json_encode(['success' => false, 'message' => 'Vai trò không hợp lệ.']);
     exit;
@@ -51,13 +51,13 @@ if (!in_array($trangThai, ['0', '1'], true)) {
     exit;
 }
 
-if (!preg_match('/^[0-9]{9,12}$/', $sdt)) {
+if ($sdt !== '' && !preg_match('/^[0-9]{9,12}$/', $sdt)) {
     http_response_code(422);
     echo json_encode(['success' => false, 'message' => 'Số điện thoại phải gồm 9 đến 12 chữ số.']);
     exit;
 }
 
-if ($diaChi === '' || mb_strlen($diaChi) > 50) {
+if ($diaChi !== '' && mb_strlen($diaChi) > 50) {
     http_response_code(422);
     echo json_encode(['success' => false, 'message' => 'Địa chỉ phải từ 1 đến 50 ký tự.']);
     exit;
@@ -83,17 +83,23 @@ try {
     $currentUser = (string) ($_SESSION['current_user'] ?? '');
     $isSelf = strcasecmp($maNV, $currentUser) === 0;
 
-    // Không cho phép quản lý kho chỉnh sửa thông tin của quản lý kho khác.
-    if ((int) $employee['vaiTro'] === 0 && !$isSelf) {
+    $currentRole = (int) $_SESSION['role'];
+
+    if ((int) $vaiTro !== (int) $employee['vaiTro']) {
         http_response_code(403);
-        echo json_encode(['success' => false, 'message' => 'Bạn không thể chỉnh sửa thông tin của quản lý kho khác.']);
+        echo json_encode(['success' => false, 'message' => 'Không thể thay đổi vai trò tài khoản sau khi tạo.']);
         exit;
     }
 
-    // Không cho phép tự hạ cấp vai trò của chính mình.
-    if ($isSelf && $vaiTro !== '0') {
-        http_response_code(422);
-        echo json_encode(['success' => false, 'message' => 'Bạn không thể tự hạ cấp vai trò của chính mình.']);
+    // Chỉ admin được quản lý tài khoản admin; quản lý kho không được sửa quản lý khác.
+    if ((int) $employee['vaiTro'] === 2 && $currentRole !== 2 && !$isSelf) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Bạn không thể chỉnh sửa tài khoản quản trị hệ thống.']);
+        exit;
+    }
+    if ((int) $employee['vaiTro'] === 0 && !$isSelf && $currentRole !== 2) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Bạn không thể chỉnh sửa thông tin của quản lý kho khác.']);
         exit;
     }
 
@@ -102,16 +108,6 @@ try {
         http_response_code(422);
         echo json_encode(['success' => false, 'message' => 'Bạn không thể tự khóa tài khoản của chính mình.']);
         exit;
-    }
-
-    // Không cho phép hạ quyền quản lý kho cuối cùng của hệ thống.
-    if ((int) $employee['vaiTro'] === 0 && $vaiTro === '1') {
-        $managerCount = (int) $pdo->query('SELECT COUNT(*) FROM NHANVIEN WHERE vaiTro = 0')->fetchColumn();
-        if ($managerCount <= 1) {
-            http_response_code(409);
-            echo json_encode(['success' => false, 'message' => 'Không thể chuyển vai trò: hệ thống cần ít nhất một quản lý kho.']);
-            exit;
-        }
     }
 
     if ($matKhau !== '') {
@@ -124,8 +120,8 @@ try {
             'hoTen' => $hoTen,
             'vaiTro' => (int) $vaiTro,
             'trangThai' => (int) $trangThai,
-            'sdt' => $sdt,
-            'diaChi' => $diaChi,
+            'sdt' => $sdt !== '' ? $sdt : null,
+            'diaChi' => $diaChi !== '' ? $diaChi : null,
             'matKhau' => password_hash($matKhau, PASSWORD_DEFAULT),
             'maNV' => $maNV,
         ]);
@@ -139,8 +135,8 @@ try {
             'hoTen' => $hoTen,
             'vaiTro' => (int) $vaiTro,
             'trangThai' => (int) $trangThai,
-            'sdt' => $sdt,
-            'diaChi' => $diaChi,
+            'sdt' => $sdt !== '' ? $sdt : null,
+            'diaChi' => $diaChi !== '' ? $diaChi : null,
             'maNV' => $maNV,
         ]);
     }

@@ -1,6 +1,7 @@
 <?php
 $isManager = (int) ($_SESSION['role'] ?? 1) === 0;
-$roleLabel = $isManager ? 'Quản lý kho' : 'Nhân viên kho';
+$isAdmin = (int) ($_SESSION['role'] ?? 1) === 2;
+$roleLabel = $isAdmin ? 'Quản trị hệ thống' : ($isManager ? 'Quản lý kho' : 'Nhân viên kho');
 $currentPage = basename($_SERVER['PHP_SELF']);
 $pendingMaterialExports = 0;
 $pendingProductExports = 0;
@@ -40,28 +41,31 @@ $navItemClass = static function (string $page) use ($currentPage): string {
     </div>
 
     <nav class="flex-1 px-3 py-4 space-y-6">
-        <!-- HỆ THỐNG -->
-        <div>
-            <div class="text-[11px] font-bold text-slate-500 mb-2 px-3">HỆ THỐNG</div>
-            <a href="dashboard.php" class="<?= $navItemClass('dashboard.php') ?>" <?= $currentPage === 'dashboard.php' ? 'aria-current="page"' : '' ?>>
-                <i class="fa-solid fa-border-all w-5"></i> Tổng quan hệ thống
-            </a>
-        </div>
+        <?php if (!$isAdmin): ?>
+            <!-- HỆ THỐNG -->
+            <div>
+                <div class="text-[11px] font-bold text-slate-500 mb-2 px-3">HỆ THỐNG</div>
+                <a href="dashboard.php" class="<?= $navItemClass('dashboard.php') ?>" <?= $currentPage === 'dashboard.php' ? 'aria-current="page"' : '' ?>>
+                    <i class="fa-solid fa-border-all w-5"></i> Tổng quan hệ thống
+                </a>
+            </div>
+        <?php endif; ?>
 
-        <!-- QUẢN TRỊ (chỉ Quản lý kho) -->
-        <?php if ($isManager): ?>
+        <!-- QUẢN TRỊ -->
+        <?php if ($isManager || $isAdmin): ?>
             <div>
                 <div class="text-[11px] font-bold text-slate-500 mb-2 px-3">QUẢN TRỊ</div>
                 <ul class="space-y-1">
                     <li>
                         <a href="employees.php" class="<?= $navItemClass('employees.php') ?>" <?= $currentPage === 'employees.php' ? 'aria-current="page"' : '' ?>>
-                            <i class="fa-solid fa-users-gear text-sky-400 w-5 text-center"></i> Quản lý nhân viên
+                            <i class="fa-solid fa-users-gear text-sky-400 w-5 text-center"></i> Quản lý tài khoản
                         </a>
                     </li>
                 </ul>
             </div>
         <?php endif; ?>
 
+        <?php if (!$isAdmin): ?>
         <!-- NHIỆM VỤ QUẢN LÝ KHO -->
         <div>
             <div class="flex justify-between items-center mb-2 px-3">
@@ -123,8 +127,10 @@ $navItemClass = static function (string $page) use ($currentPage): string {
                 <?php endif; ?>
             </ul>
         </div>
+        <?php endif; ?>
 
         <!-- TRA CỨU & DỮ LIỆU -->
+        <?php if (!$isAdmin): ?>
         <div>
             <div class="text-[11px] font-bold text-slate-500 mb-2 px-3">TRA CỨU & DỮ LIỆU</div>
             <ul class="space-y-1">
@@ -135,6 +141,7 @@ $navItemClass = static function (string $page) use ($currentPage): string {
                 </li>
             </ul>
         </div>
+        <?php endif; ?>
     </nav>
 </aside>
 

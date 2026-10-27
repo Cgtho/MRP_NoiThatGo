@@ -11,11 +11,14 @@ if (!isset($_SESSION['current_user'], $_SESSION['role'])) {
 require_once __DIR__ . '/../config/db.php';
 
 $isManager = (int) $_SESSION['role'] === 0;
+$isAdmin = (int) $_SESSION['role'] === 2;
 $currentUser = (string) $_SESSION['current_user'];
 $notifications = [];
 
 try {
-    if ($isManager) {
+    if ($isAdmin) {
+        $queries = [];
+    } elseif ($isManager) {
         $queries = [
             [
                 'sql' => 'SELECT maPX AS code, ngayXuat AS createdAt

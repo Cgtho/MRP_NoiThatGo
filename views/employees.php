@@ -1,17 +1,17 @@
 <?php
-require_once '../includes/header.php';
-require_once '../config/db.php';
-require_once '../includes/csrf.php';
+require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../includes/csrf.php';
 
-// Chỉ quản lý kho (vaiTro = 0) được truy cập trang quản lý nhân viên.
-if (!$isManager) {
+// Quản lý kho và quản trị hệ thống được truy cập trang quản lý tài khoản.
+if (!$isManager && !$isAdmin) {
     header('Location: dashboard.php');
     exit;
 }
 
 $search = trim((string) ($_GET['search'] ?? ''));
 $requestedRole = $_GET['role'] ?? 'all';
-$roleFilter = in_array($requestedRole, ['all', 'manager', 'staff'], true) ? $requestedRole : 'all';
+$roleFilter = in_array($requestedRole, ['all', 'admin', 'manager', 'staff'], true) ? $requestedRole : 'all';
 
 $requestedStatus = $_GET['status'] ?? 'all';
 $statusFilter = in_array($requestedStatus, ['all', 'active', 'locked'], true) ? $requestedStatus : 'all';
@@ -20,7 +20,7 @@ $perPage = 10;
 $page = max(1, (int) ($_GET['page'] ?? 1));
 
 $employees = [];
-$stats = ['total' => 0, 'managers' => 0, 'staff' => 0, 'active' => 0, 'locked' => 0];
+$stats = ['total' => 0, 'admins' => 0, 'managers' => 0, 'staff' => 0, 'active' => 0, 'locked' => 0];
 $employeesError = null;
 $filteredTotal = 0;
 $totalPages = 1;
@@ -30,6 +30,7 @@ try {
         'SELECT COUNT(*) AS total,
                 COALESCE(SUM(vaiTro = 0), 0) AS managers,
                 COALESCE(SUM(vaiTro = 1), 0) AS staff,
+                COALESCE(SUM(vaiTro = 2), 0) AS admins,
                 COALESCE(SUM(trangThai = 1), 0) AS active,
                 COALESCE(SUM(trangThai = 0), 0) AS locked
          FROM NHANVIEN'
@@ -38,6 +39,7 @@ try {
         'total' => (int) ($statsRow['total'] ?? 0),
         'managers' => (int) ($statsRow['managers'] ?? 0),
         'staff' => (int) ($statsRow['staff'] ?? 0),
+        'admins' => (int) ($statsRow['admins'] ?? 0),
         'active' => (int) ($statsRow['active'] ?? 0),
         'locked' => (int) ($statsRow['locked'] ?? 0),
     ];
@@ -51,7 +53,9 @@ try {
         $params['searchTen'] = "%{$search}%";
     }
 
-    if ($roleFilter === 'manager') {
+    if ($roleFilter === 'admin') {
+        $conditions[] = 'vaiTro = 2';
+    } elseif ($roleFilter === 'manager') {
         $conditions[] = 'vaiTro = 0';
     } elseif ($roleFilter === 'staff') {
         $conditions[] = 'vaiTro = 1';
@@ -133,8 +137,8 @@ $endPage = min($totalPages, $page + 2);
     <div class="flex items-center gap-3">
         <div class="bg-sky-100 text-sky-600 p-2 rounded-lg text-xl"><i class="fa-solid fa-users-gear"></i></div>
         <div>
-            <h2 class="text-xl font-bold text-slate-800">Quản Lý Nhân Viên (NHANVIEN)</h2>
-            <p class="text-xs text-slate-500">Thêm, chỉnh sửa và phân quyền tài khoản kho. Vai trò: <span class="font-medium text-slate-700">Quản lý kho (0)</span> &bull; <span class="font-medium text-slate-700">Nhân viên kho (1)</span>.</p>
+            <h2 class="text-xl font-bold text-slate-800">Quản Lý Nhân Viên</h2>
+            <p class="text-xs text-slate-500">Thêm, chỉnh sửa và phân quyền tài khoản.</p>
         </div>
     </div>
     <button id="openAddEmployeeModal" type="button" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition flex items-center gap-2">
@@ -180,6 +184,9 @@ $endPage = min($totalPages, $page + 2);
         <a href="<?= htmlspecialchars($roleUrl('all'), ENT_QUOTES, 'UTF-8') ?>" class="<?= $roleFilter === 'all' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800' ?> text-[13px] font-medium px-4 py-2 rounded-lg flex items-center gap-2 transition">
             <i class="fa-solid fa-list"></i> Tất cả (<?= number_format($stats['total']) ?>)
         </a>
+        <a href="<?= htmlspecialchars($roleUrl('admin'), ENT_QUOTES, 'UTF-8') ?>" class="<?= $roleFilter === 'admin' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800' ?> text-[13px] font-medium px-4 py-2 rounded-lg flex items-center gap-2 transition">
+            <i class="fa-solid fa-user-shield"></i> Admin (<?= number_format($stats['admins']) ?>)
+        </a>
         <a href="<?= htmlspecialchars($roleUrl('manager'), ENT_QUOTES, 'UTF-8') ?>" class="<?= $roleFilter === 'manager' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800' ?> text-[13px] font-medium px-4 py-2 rounded-lg flex items-center gap-2 transition">
             <i class="fa-solid fa-crown"></i> Quản lý kho (<?= number_format($stats['managers']) ?>)
         </a>
@@ -204,12 +211,11 @@ $endPage = min($totalPages, $page + 2);
 <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
     <div class="flex justify-between items-end mb-4">
         <h3 class="font-bold text-slate-800">Danh sách tài khoản kho</h3>
-        <span class="text-xs text-blue-500 font-medium">BẢNG NHANVIEN</span>
     </div>
 
-    <div class="overflow-x-auto rounded-lg border border-slate-200">
+    <div class="max-h-[300px] overflow-auto rounded-lg border border-slate-200" aria-label="Danh sách nhân viên, tối đa 5 dòng hiển thị">
         <table class="w-full text-left text-sm">
-            <thead class="bg-slate-50 text-slate-500 text-[10px] uppercase font-semibold">
+            <thead class="sticky top-0 z-10 bg-slate-50 text-slate-500 text-[10px] uppercase font-semibold">
                 <tr>
                     <th class="px-4 py-3 border-b border-slate-200 w-32">Mã NV</th>
                     <th class="px-4 py-3 border-b border-slate-200">Họ Tên</th>
@@ -232,7 +238,7 @@ $endPage = min($totalPages, $page + 2);
                             $empStatus = (int) ($employee['trangThai'] ?? 1);
                             $isSelf = strcasecmp($employee['maNV'], $currentUser) === 0;
                             // Quản lý kho không được chỉnh sửa thông tin của quản lý kho khác.
-                            $isOtherManager = $empRole === 0 && !$isSelf;
+                            $isProtectedAccount = !$isAdmin && !$isSelf && ($empRole === 0 || $empRole === 2);
                         ?>
                         <tr class="hover:bg-slate-50 transition">
                             <td class="px-4 py-3 font-bold text-slate-800">
@@ -243,7 +249,9 @@ $endPage = min($totalPages, $page + 2);
                             </td>
                             <td class="px-4 py-3 text-slate-700"><?= htmlspecialchars($employee['hoTen'], ENT_QUOTES, 'UTF-8') ?></td>
                             <td class="px-4 py-3 text-center">
-                                <?php if ($empRole === 0): ?>
+                                <?php if ($empRole === 2): ?>
+                                    <span class="bg-violet-50 text-violet-600 border border-violet-200 text-[10px] px-2 py-1 rounded-full font-medium"><i class="fa-solid fa-user-shield mr-1"></i> Quản trị hệ thống</span>
+                                <?php elseif ($empRole === 0): ?>
                                     <span class="bg-emerald-50 text-emerald-600 border border-emerald-200 text-[10px] px-2 py-1 rounded-full font-medium"><i class="fa-solid fa-crown mr-1"></i> Quản lý kho</span>
                                 <?php else: ?>
                                     <span class="bg-slate-100 text-slate-600 border border-slate-200 text-[10px] px-2 py-1 rounded-full font-medium"><i class="fa-solid fa-user mr-1"></i> Nhân viên kho</span>
@@ -253,24 +261,26 @@ $endPage = min($totalPages, $page + 2);
                                 <?php $empStatusMeta = $statusMeta[$empStatus] ?? $statusMeta[1]; ?>
                                 <span class="<?= $empStatusMeta['class'] ?> border text-[10px] px-2 py-1 rounded-full font-medium"><i class="fa-solid <?= $empStatusMeta['icon'] ?> mr-1"></i> <?= htmlspecialchars($empStatusMeta['label'], ENT_QUOTES, 'UTF-8') ?></span>
                             </td>
-                            <td class="px-4 py-3 text-slate-600"><?= htmlspecialchars($employee['sdt'], ENT_QUOTES, 'UTF-8') ?></td>
-                            <td class="px-4 py-3 text-slate-500"><?= htmlspecialchars($employee['diaChi'], ENT_QUOTES, 'UTF-8') ?></td>
+                            <td class="px-4 py-3 text-slate-600"><?= htmlspecialchars((string) ($employee['sdt'] ?? ''), ENT_QUOTES, 'UTF-8') ?: '<span class="text-slate-400">Chưa cập nhật</span>' ?></td>
+                            <td class="px-4 py-3 text-slate-500"><?= htmlspecialchars((string) ($employee['diaChi'] ?? ''), ENT_QUOTES, 'UTF-8') ?: '<span class="text-slate-400">Chưa cập nhật</span>' ?></td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center justify-center gap-1">
-                                    <button type="button" class="edit-employee p-1.5 text-blue-600 hover:bg-blue-50 rounded transition disabled:opacity-40 disabled:cursor-not-allowed" title="<?= $isOtherManager ? 'Không thể chỉnh sửa quản lý kho khác' : 'Chỉnh sửa' ?>" <?= $isOtherManager ? 'disabled' : '' ?>
+                                    <button type="button" class="edit-employee p-1.5 text-blue-600 hover:bg-blue-50 rounded transition disabled:opacity-40 disabled:cursor-not-allowed" title="<?= $isProtectedAccount ? 'Không thể chỉnh sửa tài khoản này' : 'Chỉnh sửa' ?>" <?= $isProtectedAccount ? 'disabled' : '' ?>
                                         data-manv="<?= htmlspecialchars($employee['maNV'], ENT_QUOTES, 'UTF-8') ?>"
                                         data-hotenn="<?= htmlspecialchars($employee['hoTen'], ENT_QUOTES, 'UTF-8') ?>"
                                         data-vaitro="<?= $empRole ?>"
                                         data-trangthai="<?= $empStatus ?>"
-                                        data-sdt="<?= htmlspecialchars($employee['sdt'], ENT_QUOTES, 'UTF-8') ?>"
-                                        data-diachi="<?= htmlspecialchars($employee['diaChi'], ENT_QUOTES, 'UTF-8') ?>"
+                                        data-sdt="<?= htmlspecialchars((string) ($employee['sdt'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                                        data-diachi="<?= htmlspecialchars((string) ($employee['diaChi'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
                                         data-self="<?= $isSelf ? '1' : '0' ?>">
                                         <i class="fa-solid fa-pen-to-square"></i>
                                     </button>
-                                    <button type="button" class="delete-employee p-1.5 text-rose-600 hover:bg-rose-50 rounded transition disabled:opacity-40 disabled:cursor-not-allowed" title="Xóa" <?= $isSelf ? 'disabled' : '' ?>
+                                    <?php $canChangeStatus = !$isSelf && !($empRole === 0 && !$isAdmin); ?>
+                                    <button type="button" class="lock-employee p-1.5 <?= $empStatus === 1 ? 'text-rose-600 hover:bg-rose-50' : 'text-emerald-600 hover:bg-emerald-50' ?> rounded transition disabled:opacity-40 disabled:cursor-not-allowed" title="<?= $canChangeStatus ? ($empStatus === 1 ? 'Khóa nhân viên' : 'Mở khóa nhân viên') : 'Không thể thay đổi trạng thái tài khoản này' ?>" <?= $canChangeStatus ? '' : 'disabled' ?>
                                         data-manv="<?= htmlspecialchars($employee['maNV'], ENT_QUOTES, 'UTF-8') ?>"
-                                        data-hotenn="<?= htmlspecialchars($employee['hoTen'], ENT_QUOTES, 'UTF-8') ?>">
-                                        <i class="fa-solid fa-trash-can"></i>
+                                        data-hotenn="<?= htmlspecialchars($employee['hoTen'], ENT_QUOTES, 'UTF-8') ?>"
+                                        data-trangthai="<?= $empStatus ?>">
+                                        <i class="fa-solid <?= $empStatus === 1 ? 'fa-lock' : 'fa-lock-open' ?>"></i>
                                     </button>
                                 </div>
                             </td>
@@ -338,24 +348,19 @@ $endPage = min($totalPages, $page + 2);
         <form id="addEmployeeForm" action="../ajax/add_employee.php" method="post" class="p-5">
             <?= csrf_field() ?>
             <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label for="addMaNV" class="mb-1.5 block text-sm font-medium text-slate-700">Mã nhân viên <span class="text-rose-500">*</span></label>
-                    <input id="addMaNV" name="maNV" type="text" maxlength="10" required placeholder="Ví dụ: NV003" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
-                </div>
-                <div>
-                    <label for="addVaiTro" class="mb-1.5 block text-sm font-medium text-slate-700">Vai trò <span class="text-rose-500">*</span></label>
-                    <select id="addVaiTro" name="vaiTro" required class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
-                        <option value="1">Nhân viên kho</option>
-                        <option value="0">Quản lý kho</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="addTrangThai" class="mb-1.5 block text-sm font-medium text-slate-700">Trạng thái <span class="text-rose-500">*</span></label>
-                    <select id="addTrangThai" name="trangThai" required class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
-                        <option value="1">Hoạt động</option>
-                        <option value="0">Đã khóa</option>
-                    </select>
-                </div>
+                <?php if ($isAdmin): ?>
+                    <div>
+                        <label for="addVaiTro" class="mb-1.5 block text-sm font-medium text-slate-700">Vai trò <span class="text-rose-500">*</span></label>
+                        <select id="addVaiTro" name="vaiTro" required class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
+                            <option value="1">Nhân viên kho</option>
+                            <option value="0">Quản lý kho</option>
+                            <option value="2">Quản trị hệ thống</option>
+                        </select>
+                    </div>
+                <?php else: ?>
+                    <input type="hidden" name="vaiTro" value="1">
+                <?php endif; ?>
+                <p class="col-span-2 text-xs text-slate-500">Mật khẩu mặc định: <strong>123456</strong>.</p>
                 <div class="col-span-2">
                     <label for="addHoTen" class="mb-1.5 block text-sm font-medium text-slate-700">Họ tên <span class="text-rose-500">*</span></label>
                     <input id="addHoTen" name="hoTen" type="text" maxlength="50" required placeholder="Ví dụ: Nguyễn Văn An" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
@@ -363,10 +368,6 @@ $endPage = min($totalPages, $page + 2);
                 <div>
                     <label for="addSdt" class="mb-1.5 block text-sm font-medium text-slate-700">Số điện thoại <span class="text-rose-500">*</span></label>
                     <input id="addSdt" name="sdt" type="tel" maxlength="12" required placeholder="0901000001" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
-                </div>
-                <div>
-                    <label for="addMatKhau" class="mb-1.5 block text-sm font-medium text-slate-700">Mật khẩu <span class="text-rose-500">*</span></label>
-                    <input id="addMatKhau" name="matKhau" type="password" minlength="6" required placeholder="Tối thiểu 6 ký tự" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
                 </div>
                 <div class="col-span-2">
                     <label for="addDiaChi" class="mb-1.5 block text-sm font-medium text-slate-700">Địa chỉ <span class="text-rose-500">*</span></label>
@@ -399,11 +400,13 @@ $endPage = min($totalPages, $page + 2);
                 </div>
                 <div>
                     <label for="editVaiTro" class="mb-1.5 block text-sm font-medium text-slate-700">Vai trò <span class="text-rose-500">*</span></label>
-                    <select id="editVaiTro" name="vaiTro" required class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
+                    <select id="editVaiTro" required disabled class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none disabled:bg-slate-100 disabled:text-slate-500">
                         <option value="1">Nhân viên kho</option>
                         <option value="0">Quản lý kho</option>
+                        <?php if ($isAdmin): ?><option value="2">Quản trị hệ thống</option><?php endif; ?>
                     </select>
-                    <p id="editVaiTroNote" class="mt-1 hidden text-[11px] text-amber-600">Bạn không thể tự hạ cấp vai trò của chính mình.</p>
+                    <input id="editVaiTroValue" type="hidden" name="vaiTro" value="1">
+                    <p id="editVaiTroNote" class="mt-1 text-[11px] text-amber-600">Vai trò không thể thay đổi sau khi tạo tài khoản.</p>
                 </div>
                 <div>
                     <label for="editTrangThai" class="mb-1.5 block text-sm font-medium text-slate-700">Trạng thái <span class="text-rose-500">*</span></label>
@@ -419,7 +422,7 @@ $endPage = min($totalPages, $page + 2);
                 </div>
                 <div>
                     <label for="editSdt" class="mb-1.5 block text-sm font-medium text-slate-700">Số điện thoại <span class="text-rose-500">*</span></label>
-                    <input id="editSdt" name="sdt" type="tel" maxlength="12" required class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
+                    <input id="editSdt" name="sdt" type="tel" maxlength="12" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
                 </div>
                 <div>
                     <label for="editMatKhau" class="mb-1.5 block text-sm font-medium text-slate-700">Mật khẩu mới</label>
@@ -427,7 +430,7 @@ $endPage = min($totalPages, $page + 2);
                 </div>
                 <div class="col-span-2">
                     <label for="editDiaChi" class="mb-1.5 block text-sm font-medium text-slate-700">Địa chỉ <span class="text-rose-500">*</span></label>
-                    <input id="editDiaChi" name="diaChi" type="text" maxlength="50" required class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
+                    <input id="editDiaChi" name="diaChi" type="text" maxlength="50" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
                 </div>
             </div>
             <p id="editEmployeeMessage" class="mt-4 hidden rounded-lg px-3 py-2 text-sm" role="alert"></p>
@@ -439,23 +442,26 @@ $endPage = min($totalPages, $page + 2);
     </div>
 </div>
 
-<!-- Modal Xác nhận xóa -->
-<div id="deleteEmployeeModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 items-center justify-center px-4">
-    <div class="bg-white rounded-xl w-full max-w-md shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="deleteEmployeeTitle">
+<!-- Modal thay đổi trạng thái tài khoản -->
+<div id="lockEmployeeModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 items-center justify-center px-4">
+    <div class="bg-white rounded-xl w-full max-w-md shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="lockEmployeeTitle">
         <div class="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-            <h3 id="deleteEmployeeTitle" class="font-bold text-slate-800"><i class="fa-solid fa-triangle-exclamation text-rose-500 mr-2"></i>Xóa nhân viên</h3>
-            <button id="closeDeleteEmployeeModal" type="button" class="text-slate-400 hover:text-slate-700" aria-label="Đóng">
+            <h3 id="lockEmployeeTitle" class="font-bold text-slate-800"><i class="fa-solid fa-lock text-rose-500 mr-2"></i>Khóa nhân viên</h3>
+            <button id="closeLockEmployeeModal" type="button" class="text-slate-400 hover:text-slate-700" aria-label="Đóng">
                 <i class="fa-solid fa-xmark"></i>
             </button>
         </div>
-        <form id="deleteEmployeeForm" action="../ajax/delete_employee.php" method="post" class="p-5">
+        <form id="lockEmployeeForm" action="../ajax/lock_employee.php" method="post" class="p-5">
             <?= csrf_field() ?>
-            <input id="deleteMaNV" name="maNV" type="hidden">
-            <p class="text-sm text-slate-600">Bạn có chắc chắn muốn xóa nhân viên <strong id="deleteEmployeeName" class="text-slate-800"></strong>? Hành động này không thể hoàn tác.</p>
-            <p id="deleteEmployeeMessage" class="mt-4 hidden rounded-lg px-3 py-2 text-sm" role="alert"></p>
+            <input id="lockMaNV" name="maNV" type="hidden">
+            <p id="lockEmployeePrompt" class="text-sm text-slate-600">
+                <span id="lockEmployeeActionText"></span>
+                <strong id="lockEmployeeName" class="text-slate-800"></strong>?
+            </p>
+            <p id="lockEmployeeMessage" class="mt-4 hidden rounded-lg px-3 py-2 text-sm" role="alert"></p>
             <div class="mt-5 flex justify-end gap-2">
-                <button id="cancelDeleteEmployee" type="button" class="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">Hủy</button>
-                <button type="submit" class="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700">Xóa nhân viên</button>
+                <button id="cancelLockEmployee" type="button" class="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">Hủy</button>
+                <button id="lockEmployeeSubmit" type="submit" class="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700">Khóa nhân viên</button>
             </div>
         </form>
     </div>
@@ -464,7 +470,7 @@ $endPage = min($totalPages, $page + 2);
     (function () {
         const addMessage = document.getElementById('addEmployeeMessage');
         const editMessage = document.getElementById('editEmployeeMessage');
-        const deleteMessage = document.getElementById('deleteEmployeeMessage');
+        const lockMessage = document.getElementById('lockEmployeeMessage');
 
         // Tải lại trang nhưng giữ nguyên bộ lọc và trang hiện tại.
         const currentQuery = <?= json_encode($currentQuery, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
@@ -516,7 +522,7 @@ $endPage = min($totalPages, $page + 2);
             addForm.reset();
             clearMessage(addMessage);
             openModal(addModal);
-            document.getElementById('addMaNV').focus();
+            document.getElementById('addVaiTro').focus();
         });
         document.getElementById('closeAddEmployeeModal').addEventListener('click', () => closeModal(addModal));
         document.getElementById('cancelAddEmployee').addEventListener('click', () => closeModal(addModal));
@@ -543,6 +549,7 @@ $endPage = min($totalPages, $page + 2);
                 const isSelf = button.dataset.self === '1';
                 document.getElementById('editMaNV').value = button.dataset.manv || '';
                 document.getElementById('editHoTen').value = button.dataset.hotenn || '';
+                document.getElementById('editVaiTroValue').value = button.dataset.vaitro || '1';
                 document.getElementById('editTrangThai').value = button.dataset.trangthai || '1';
                 document.getElementById('editSdt').value = button.dataset.sdt || '';
                 document.getElementById('editDiaChi').value = button.dataset.diachi || '';
@@ -550,8 +557,7 @@ $endPage = min($totalPages, $page + 2);
 
                 // Không cho phép tự hạ cấp vai trò: khóa lựa chọn "Nhân viên kho" khi sửa chính mình.
                 if (isSelf) {
-                    editVaiTro.value = '0';
-                    editVaiTroStaffOption.disabled = true;
+                    editVaiTro.value = <?= json_encode((string) ($_SESSION['role'] ?? 1)) ?>;
                     editVaiTroNote.classList.remove('hidden');
 
                     // Không cho phép tự khóa tài khoản: ẩn lựa chọn "Đã khóa" khi sửa chính mình.
@@ -559,8 +565,7 @@ $endPage = min($totalPages, $page + 2);
                     editTrangThaiNote.classList.remove('hidden');
                 } else {
                     editVaiTro.value = button.dataset.vaitro || '1';
-                    editVaiTroStaffOption.disabled = false;
-                    editVaiTroNote.classList.add('hidden');
+                    editVaiTroNote.classList.remove('hidden');
 
                     editTrangThaiLockedOption.hidden = false;
                     editTrangThaiNote.classList.add('hidden');
@@ -581,28 +586,40 @@ $endPage = min($totalPages, $page + 2);
             }
         });
 
-        // ---- Xóa nhân viên ----
-        const deleteModal = document.getElementById('deleteEmployeeModal');
-        const deleteForm = document.getElementById('deleteEmployeeForm');
+        // ---- Khóa nhân viên ----
+        const lockModal = document.getElementById('lockEmployeeModal');
+        const lockForm = document.getElementById('lockEmployeeForm');
 
-        document.querySelectorAll('.delete-employee').forEach((button) => {
+        document.querySelectorAll('.lock-employee').forEach((button) => {
             button.addEventListener('click', () => {
-                document.getElementById('deleteMaNV').value = button.dataset.manv || '';
-                document.getElementById('deleteEmployeeName').textContent =
+                const isLocked = button.dataset.trangthai === '0';
+                document.getElementById('lockEmployeeForm').action = isLocked
+                    ? '../ajax/unlock_employee.php'
+                    : '../ajax/lock_employee.php';
+                document.getElementById('lockEmployeeTitle').textContent = isLocked ? 'Mở khóa nhân viên' : 'Khóa nhân viên';
+                document.getElementById('lockEmployeeActionText').textContent = isLocked
+                    ? 'Bạn có chắc chắn muốn mở khóa tài khoản nhân viên '
+                    : 'Bạn có chắc chắn muốn khóa tài khoản nhân viên ';
+                document.getElementById('lockEmployeeSubmit').textContent = isLocked ? 'Mở khóa nhân viên' : 'Khóa nhân viên';
+                document.getElementById('lockEmployeeSubmit').className = isLocked
+                    ? 'rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700'
+                    : 'rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700';
+                document.getElementById('lockMaNV').value = button.dataset.manv || '';
+                document.getElementById('lockEmployeeName').textContent =
                     (button.dataset.hotenn || '') + ' (' + (button.dataset.manv || '') + ')';
-                clearMessage(deleteMessage);
-                openModal(deleteModal);
+                clearMessage(lockMessage);
+                openModal(lockModal);
             });
         });
-        document.getElementById('closeDeleteEmployeeModal').addEventListener('click', () => closeModal(deleteModal));
-        document.getElementById('cancelDeleteEmployee').addEventListener('click', () => closeModal(deleteModal));
+        document.getElementById('closeLockEmployeeModal').addEventListener('click', () => closeModal(lockModal));
+        document.getElementById('cancelLockEmployee').addEventListener('click', () => closeModal(lockModal));
 
-        deleteForm.addEventListener('submit', async (event) => {
+        lockForm.addEventListener('submit', async (event) => {
             event.preventDefault();
-            if (await submitForm(deleteForm, deleteMessage)) {
+            if (await submitForm(lockForm, lockMessage)) {
                 window.location.href = reloadUrl;
             }
         });
     })();
 </script>
-<?php require_once '../includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../includes/footer.php'; ?>

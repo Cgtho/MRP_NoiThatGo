@@ -3,6 +3,7 @@ require_once '../includes/header.php';
 require_once '../config/db.php';
 
 $isManager = (int) ($_SESSION['role'] ?? 1) === 0;
+$isAdmin = (int) ($_SESSION['role'] ?? 1) === 2;
 $pendingTasks = 0;
 $dashboardError = null;
 $stats = ['materialKinds' => 0, 'materialQty' => 0, 'productKinds' => 0, 'productQty' => 0, 'pendingExports' => 0, 'orders' => 0];
@@ -10,7 +11,9 @@ $pendingExports = [];
 $productionOrders = [];
 
 try {
-    if ($isManager) {
+    if ($isAdmin) {
+        $stmt = $pdo->query('SELECT 0');
+    } elseif ($isManager) {
         $stmt = $pdo->prepare(
             'SELECT
                 (SELECT COUNT(*) FROM PHIEUXUATNVL WHERE trangThai = 0)

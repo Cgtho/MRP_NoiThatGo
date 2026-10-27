@@ -12,6 +12,60 @@ document.addEventListener("DOMContentLoaded", () => {
     const notificationCount = document.getElementById('notificationCount');
     const notificationList = document.getElementById('notificationList');
 
+    const changePasswordModal = document.getElementById('changePasswordModal');
+    const changePasswordForm = document.getElementById('changePasswordForm');
+    const changePasswordMessage = document.getElementById('changePasswordMessage');
+    const closeChangePasswordModal = () => {
+        if (changePasswordModal) {
+            changePasswordModal.classList.add('hidden');
+            changePasswordModal.classList.remove('flex');
+        }
+    };
+
+    if (changePasswordModal && changePasswordForm) {
+        const openChangePasswordModal = document.getElementById('openChangePasswordModal');
+        const closeChangePasswordButton = document.getElementById('closeChangePasswordModal');
+        const cancelChangePasswordButton = document.getElementById('cancelChangePassword');
+        if (openChangePasswordModal && changePasswordMessage) {
+            openChangePasswordModal.addEventListener('click', () => {
+                changePasswordForm.reset();
+                changePasswordMessage.className = 'mt-4 hidden rounded-lg px-3 py-2 text-sm';
+                changePasswordMessage.textContent = '';
+                changePasswordModal.classList.remove('hidden');
+                changePasswordModal.classList.add('flex');
+                document.getElementById('currentPassword').focus();
+            });
+        }
+        if (closeChangePasswordButton) {
+            closeChangePasswordButton.addEventListener('click', closeChangePasswordModal);
+        }
+        if (cancelChangePasswordButton) {
+            cancelChangePasswordButton.addEventListener('click', closeChangePasswordModal);
+        }
+        changePasswordForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            try {
+                const response = await fetch(changePasswordForm.action, {
+                    method: 'POST',
+                    body: new FormData(changePasswordForm),
+                    headers: { Accept: 'application/json' },
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    changePasswordMessage.className = 'mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600';
+                    changePasswordMessage.textContent = result.message || 'Không thể đổi mật khẩu.';
+                    return;
+                }
+                changePasswordMessage.className = 'mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-600';
+                changePasswordMessage.textContent = result.message;
+                changePasswordForm.reset();
+            } catch (error) {
+                changePasswordMessage.className = 'mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600';
+                changePasswordMessage.textContent = 'Không thể kết nối máy chủ.';
+            }
+        });
+    }
+
     const loadNotifications = async () => {
         if (!notificationButton || !notificationList) {
             return;
