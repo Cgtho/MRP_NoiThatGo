@@ -274,10 +274,6 @@ $qs = static function (array $o): string {
            class="rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-indigo-50 flex items-center gap-2">
             <i class="fa-solid fa-download text-indigo-600"></i> Tải CSV
         </a>
-        <button type="button" onclick="window.print()"
-           class="rounded-lg border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-white/20 flex items-center gap-2">
-            <i class="fa-solid fa-print"></i> In Báo Cáo
-        </button>
       </div>
     </div>
 </div>
@@ -287,31 +283,6 @@ $qs = static function (array $o): string {
 <i class="fa-solid fa-circle-exclamation mr-2"></i><?= htmlspecialchars($reportError, ENT_QUOTES, 'UTF-8') ?>
 </div>
 <?php endif; ?>
-
-<!-- Bộ lọc -->
-<form method="get" class="sticky top-0 z-30 mb-6 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white/95 p-4 shadow-md backdrop-blur">
-    <div class="flex flex-wrap items-center gap-3">
-        <span class="flex items-center gap-2 text-sm font-semibold text-slate-700"><i class="fa-solid fa-sliders text-indigo-500"></i> Kỳ báo cáo</span>
-        <div class="flex bg-slate-100 rounded-lg p-1">
-            <a href="?<?= htmlspecialchars($qs(['mode' => 'month', 'period' => array_values($availablePeriods['months'])[0]]), ENT_QUOTES, 'UTF-8') ?>"
-               class="<?= $tabClass('month', $mode) ?>">Theo Tháng</a>
-            <a href="?<?= htmlspecialchars($qs(['mode' => 'quarter', 'period' => array_values($availablePeriods['quarters'])[0]]), ENT_QUOTES, 'UTF-8') ?>"
-               class="<?= $tabClass('quarter', $mode) ?>">Theo Quý</a>
-            <a href="?<?= htmlspecialchars($qs(['mode' => 'year', 'period' => array_values($availablePeriods['years'])[0]]), ENT_QUOTES, 'UTF-8') ?>"
-               class="<?= $tabClass('year', $mode) ?>">Theo Năm</a>
-        </div>
-    </div>
-    <div class="flex flex-wrap items-center gap-3">
-        <input type="hidden" name="mode" value="<?= htmlspecialchars($mode, ENT_QUOTES, 'UTF-8') ?>">
-        <select name="period" onchange="this.form.submit()"
-           class="min-w-40 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
-            <?php foreach ($periodOptions as $opt): ?>
-            <option value="<?= htmlspecialchars($opt, ENT_QUOTES, 'UTF-8') ?>" <?= $opt === $period ? 'selected' : '' ?>><?= htmlspecialchars($periodOptLabel($opt, $mode), ENT_QUOTES, 'UTF-8') ?><?= $opt === $list[0] ? ' (Kỳ hiện tại)' : '' ?></option>
-            <?php endforeach; ?>
-        </select>
-        <span class="rounded-full bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700"><i class="fa-regular fa-calendar mr-1"></i><?= htmlspecialchars($periodLabel, ENT_QUOTES, 'UTF-8') ?></span>
-    </div>
-</form>
 
 <!-- ================= MRP ANALYTICS DASHBOARD ================= -->
 <div id="mrpDashboard" class="mb-8">
@@ -331,114 +302,54 @@ $qs = static function (array $o): string {
         <i class="fa-solid fa-circle-notch fa-spin text-3xl text-indigo-500 mb-3"></i>
         <span class="text-sm">Đang tải dữ liệu thống kê MRP...</span>
     </div>
-
-    <!-- Error -->
     <div id="mrpError" class="hidden bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 rounded-xl">
         <i class="fa-solid fa-circle-exclamation mr-2"></i><span id="mrpErrorText"></span>
     </div>
-
     <div id="mrpContent" class="hidden">
-        <!-- KPI Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                <div class="flex justify-between items-start mb-2">
-                    <div class="text-xs font-semibold text-slate-500 uppercase">Tổng nhu cầu vật tư</div>
-                    <i class="fa-solid fa-layer-group text-indigo-500"></i>
-                </div>
-                <div id="kpiTotalRequirement" class="text-3xl font-bold text-slate-800 mb-1">0</div>
-                <div class="text-[11px] text-slate-400">Lượng NVL cần cho lệnh SX đang hoạt động</div>
-            </div>
-
-            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                <div class="flex justify-between items-start mb-2">
-                    <div class="text-xs font-semibold text-slate-500 uppercase">Chủng loại thiếu hụt</div>
-                    <i class="fa-solid fa-triangle-exclamation text-red-500"></i>
-                </div>
-                <div id="kpiShortageKinds" class="text-3xl font-bold text-red-600 mb-1">0</div>
-                <div class="text-[11px] text-slate-400">Mã NVL có nhu cầu vượt tồn kho</div>
-            </div>
-
-            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                <div class="flex justify-between items-start mb-2">
-                    <div class="text-xs font-semibold text-slate-500 uppercase">Lệnh SX đang chờ</div>
-                    <i class="fa-regular fa-clock text-amber-500"></i>
-                </div>
-                <div id="kpiOrdersPending" class="text-3xl font-bold text-slate-800 mb-1">0</div>
-                <div class="text-[11px] text-slate-400">Trạng thái: Chờ xử lý</div>
-            </div>
-
-            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-                <div class="flex justify-between items-start mb-2">
-                    <div class="text-xs font-semibold text-slate-500 uppercase">Đang làm / Hoàn thành</div>
-                    <i class="fa-solid fa-arrows-rotate text-blue-500"></i>
-                </div>
-                <div class="text-2xl font-bold text-slate-800 mb-1">
-                    <span id="kpiOrdersInProgress">0</span>
-                    <span class="text-slate-300 mx-1">/</span>
-                    <span id="kpiOrdersCompleted" class="text-emerald-600">0</span>
-                </div>
-                <div class="text-[11px] text-slate-400">Đang làm / Đã hoàn thành</div>
-            </div>
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm"><div class="flex justify-between items-start mb-2"><div class="text-xs font-semibold text-slate-500 uppercase">Tổng nhu cầu vật tư</div><i class="fa-solid fa-layer-group text-indigo-500"></i></div><div id="kpiTotalRequirement" class="text-3xl font-bold text-slate-800 mb-1">0</div><div class="text-[11px] text-slate-400">Lượng NVL cần cho lệnh SX đang hoạt động</div></div>
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm"><div class="flex justify-between items-start mb-2"><div class="text-xs font-semibold text-slate-500 uppercase">Chủng loại thiếu hụt</div><i class="fa-solid fa-triangle-exclamation text-red-500"></i></div><div id="kpiShortageKinds" class="text-3xl font-bold text-red-600 mb-1">0</div><div class="text-[11px] text-slate-400">Mã NVL có nhu cầu vượt tồn kho</div></div>
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm"><div class="flex justify-between items-start mb-2"><div class="text-xs font-semibold text-slate-500 uppercase">Lệnh SX đang chờ</div><i class="fa-regular fa-clock text-amber-500"></i></div><div id="kpiOrdersPending" class="text-3xl font-bold text-slate-800 mb-1">0</div><div class="text-[11px] text-slate-400">Trạng thái: Chờ xử lý</div></div>
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm"><div class="flex justify-between items-start mb-2"><div class="text-xs font-semibold text-slate-500 uppercase">Đang làm / Hoàn thành</div><i class="fa-solid fa-arrows-rotate text-blue-500"></i></div><div class="text-2xl font-bold text-slate-800 mb-1"><span id="kpiOrdersInProgress">0</span><span class="text-slate-300 mx-1">/</span><span id="kpiOrdersCompleted" class="text-emerald-600">0</span></div><div class="text-[11px] text-slate-400">Đang làm / Đã hoàn thành</div></div>
         </div>
-
-        <!-- Charts -->
         <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-6">
-            <div class="xl:col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                <h4 class="font-bold text-slate-800 mb-4 text-sm">Top 10 NVL: Nhu cầu MRP vs Tồn kho</h4>
-                <div class="relative h-72"><canvas id="mrpBarChart"></canvas></div>
-            </div>
-            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                <h4 class="font-bold text-slate-800 mb-4 text-sm">Tỷ lệ trạng thái lệnh sản xuất</h4>
-                <div class="relative h-72"><canvas id="mrpDoughnutChart"></canvas></div>
-            </div>
+            <div class="xl:col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm"><h4 class="font-bold text-slate-800 mb-4 text-sm">Top 5 NVL được sử dụng nhiều nhất</h4><div class="relative h-72"><canvas id="mrpBarChart"></canvas></div></div>
+            <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm"><h4 class="font-bold text-slate-800 mb-4 text-sm">Tỷ lệ trạng thái lệnh sản xuất</h4><div class="relative h-72"><canvas id="mrpDoughnutChart"></canvas></div></div>
         </div>
-
-        <!-- MRP Table -->
         <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
-            <div class="flex flex-wrap justify-between items-end gap-3 mb-4">
-                <div>
-                    <h4 class="font-bold text-slate-800">Bảng Chi Tiết Cân Đối Vật Tư (MRP)</h4>
-                    <span class="text-[11px] text-slate-400">Tổng <strong id="mrpRowCount" class="text-slate-600">0</strong> nguyên vật liệu</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <div class="relative">
-                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i>
-                        <input id="mrpSearch" type="search" placeholder="Tìm mã / tên NVL..."
-                               class="w-56 rounded-lg border border-slate-300 py-1.5 pl-8 pr-3 text-[13px] focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" aria-label="Tìm kiếm">
-                    </div>
-                    <select id="mrpStatusFilter" class="rounded-lg border border-slate-300 py-1.5 px-2 text-[13px] text-slate-700 focus:border-indigo-500 focus:outline-none" aria-label="Lọc trạng thái">
-                        <option value="all">Tất cả</option>
-                        <option value="thieu">Thiếu hụt</option>
-                        <option value="du">Đủ hàng</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="overflow-x-auto rounded-lg border border-slate-200 min-h-[420px]">
-                <table class="w-full min-w-[760px] text-left text-sm">
-                    <thead class="bg-slate-50 text-slate-500 text-[10px] uppercase font-semibold">
-                        <tr>
-                            <th class="px-4 py-3 border-b border-slate-200">Mã NVL</th>
-                            <th class="px-4 py-3 border-b border-slate-200">Tên Nguyên Vật Liệu</th>
-                            <th class="px-4 py-3 border-b border-slate-200">ĐVT</th>
-                            <th class="px-4 py-3 text-right border-b border-slate-200">Tồn kho hiện tại</th>
-                            <th class="px-4 py-3 text-right border-b border-slate-200">Tổng nhu cầu SX</th>
-                            <th class="px-4 py-3 text-right border-b border-slate-200">Chênh lệch (thiếu)</th>
-                            <th class="px-4 py-3 text-center border-b border-slate-200">Trạng thái</th>
-                        </tr>
-                    </thead>
-                    <tbody id="mrpTableBody" class="divide-y divide-slate-100 text-xs"></tbody>
-                </table>
-            </div>
-
-            <div class="flex flex-wrap justify-between items-center gap-3 mt-4">
-                <span id="mrpTableInfo" class="text-[11px] text-slate-400"></span>
-                <div id="mrpPagination" class="flex items-center gap-1"></div>
-            </div>
+            <div class="flex flex-wrap justify-between items-end gap-3 mb-4"><div><h4 class="font-bold text-slate-800">Bảng Chi Tiết Cân Đối Vật Tư (MRP)</h4><span class="text-[11px] text-slate-400">Tổng <strong id="mrpRowCount" class="text-slate-600">0</strong> nguyên vật liệu</span></div><div class="flex items-center gap-2"><div class="relative"><i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400"></i><input id="mrpSearch" type="search" placeholder="Tìm mã / tên NVL..." class="w-56 rounded-lg border border-slate-300 py-1.5 pl-8 pr-3 text-[13px] focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" aria-label="Tìm kiếm"></div><select id="mrpStatusFilter" class="rounded-lg border border-slate-300 py-1.5 px-2 text-[13px] text-slate-700 focus:border-indigo-500 focus:outline-none" aria-label="Lọc trạng thái"><option value="all">Tất cả</option><option value="thieu">Thiếu hụt</option><option value="du">Đủ hàng</option></select></div></div>
+            <div class="overflow-x-auto rounded-lg border border-slate-200 min-h-[420px]"><table class="w-full min-w-[760px] text-left text-sm"><thead class="bg-slate-50 text-slate-500 text-[10px] uppercase font-semibold"><tr><th class="px-4 py-3 border-b">Mã NVL</th><th class="px-4 py-3 border-b">Tên NVL</th><th class="px-4 py-3 border-b">ĐVT</th><th class="px-4 py-3 text-right border-b">Tồn kho</th><th class="px-4 py-3 text-right border-b">Nhu cầu</th><th class="px-4 py-3 text-right border-b">Thiếu hụt</th><th class="px-4 py-3 text-center border-b">Trạng thái</th></tr></thead><tbody id="mrpTableBody" class="divide-y divide-slate-100 text-xs"></tbody></table></div>
+            <div class="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500"><span id="mrpTableInfo"></span><div id="mrpPagination" class="flex items-center gap-1"></div></div>
         </div>
     </div>
 </div>
-<!-- =============== END MRP ANALYTICS DASHBOARD =============== -->
+
+<!-- Bộ lọc -->
+<form method="get" class="sticky top-0 z-30 mb-6 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white/95 p-4 shadow-md backdrop-blur">
+    <div class="flex flex-wrap items-center gap-3">
+        <span class="flex items-center gap-2 text-sm font-semibold text-slate-700"><i class="fa-solid fa-sliders text-indigo-500"></i> Kỳ báo cáo</span>
+        <div class="flex bg-slate-100 rounded-lg p-1">
+            <a href="?<?= htmlspecialchars($qs(['mode' => 'month', 'period' => array_values($availablePeriods['months'])[0]]), ENT_QUOTES, 'UTF-8') ?>"
+               class="<?= $tabClass('month', $mode) ?>">Theo Tháng</a>
+            <a href="?<?= htmlspecialchars($qs(['mode' => 'quarter', 'period' => array_values($availablePeriods['quarters'])[0]]), ENT_QUOTES, 'UTF-8') ?>"
+               class="<?= $tabClass('quarter', $mode) ?>">Theo Quý</a>
+            <a href="?<?= htmlspecialchars($qs(['mode' => 'year', 'period' => array_values($availablePeriods['years'])[0]]), ENT_QUOTES, 'UTF-8') ?>"
+               class="<?= $tabClass('year', $mode) ?>">Theo Năm</a>
+        </div>
+    </div>
+    <div class="flex flex-wrap items-center gap-3">
+        <input type="hidden" name="mode" value="<?= htmlspecialchars($mode, ENT_QUOTES, 'UTF-8') ?>">
+        <select name="period" onchange="sessionStorage.setItem('reports-period-scroll-y', String(document.querySelector('main').scrollTop)); this.form.submit()"
+           class="min-w-40 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
+            <?php foreach ($periodOptions as $opt): ?>
+            <option value="<?= htmlspecialchars($opt, ENT_QUOTES, 'UTF-8') ?>" <?= $opt === $period ? 'selected' : '' ?>><?= htmlspecialchars($periodOptLabel($opt, $mode), ENT_QUOTES, 'UTF-8') ?><?= $opt === $list[0] ? ' (Kỳ hiện tại)' : '' ?></option>
+            <?php endforeach; ?>
+        </select>
+        <span class="rounded-full bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700"><i class="fa-regular fa-calendar mr-1"></i><?= htmlspecialchars($periodLabel, ENT_QUOTES, 'UTF-8') ?></span>
+    </div>
+</form>
+
+
 
 <!-- 4 Thống kê -->
 <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
@@ -482,7 +393,6 @@ $qs = static function (array $o): string {
 <!-- Bảng chi tiết báo cáo -->
 <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-4 sm:p-6">
     <div class="flex flex-wrap justify-between items-end gap-2 mb-4">
-        <div><span class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-indigo-500">Báo cáo 01</span><h4 class="font-bold text-slate-800">Tồn, nhập &amp; xuất nguyên vật liệu</h4></div>
         <span class="text-[11px] text-slate-400"><i class="fa-solid fa-ruler-combined mr-1"></i>Đơn vị tính quy chuẩn</span>
     </div>
     
@@ -524,7 +434,6 @@ $qs = static function (array $o): string {
 <!-- Bảng tổng hợp sản xuất & xuất bán thành phẩm -->
 <div class="bg-white border border-slate-200 rounded-xl shadow-sm p-4 sm:p-6 mt-6">
     <div class="flex flex-wrap justify-between items-end gap-2 mb-4">
-        <div><span class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-emerald-600">Báo cáo 02</span><h4 class="font-bold text-slate-800">Xuất bán &amp; tồn thành phẩm</h4></div>
         <span class="text-[11px] text-slate-400"><i class="fa-solid fa-boxes-stacked mr-1"></i>Lưu kho thành phẩm</span>
     </div>
 
@@ -560,6 +469,29 @@ $qs = static function (array $o): string {
         </table>
     </div>
 </div>
+
+<script>
+(() => {
+    const scrollKey = 'reports-period-scroll-y';
+    const scrollContainer = document.querySelector('main');
+    if (!scrollContainer) return;
+    const rememberPosition = () => sessionStorage.setItem(scrollKey, String(scrollContainer.scrollTop));
+    document.querySelector('form[method="get"]')?.addEventListener('submit', rememberPosition);
+    document.querySelectorAll('form[method="get"] a[href*="mode="]').forEach((link) => {
+        link.addEventListener('click', rememberPosition);
+    });
+    const savedPosition = sessionStorage.getItem(scrollKey);
+    if (savedPosition !== null) {
+        sessionStorage.removeItem(scrollKey);
+        const restorePosition = () => { scrollContainer.scrollTop = Number(savedPosition) || 0; };
+        window.addEventListener('load', restorePosition, { once: true });
+        window.addEventListener('pageshow', restorePosition, { once: true });
+        requestAnimationFrame(() => requestAnimationFrame(restorePosition));
+        window.setTimeout(restorePosition, 100);
+        window.setTimeout(restorePosition, 400);
+    }
+})();
+</script>
 
 <?php require_once '../includes/footer.php'; ?>
 

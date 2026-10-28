@@ -77,15 +77,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 data: {
                     labels: chart.labels,
                     datasets: [
-                        { label: 'Nhu cầu MRP', data: chart.demand, backgroundColor: palette.demand, borderRadius: 4 },
+                        { label: 'Nhu cầu sử dụng', data: chart.demand, backgroundColor: palette.demand, borderRadius: 4 },
                         { label: 'Tồn kho hiện tại', data: chart.stock, backgroundColor: palette.stock, borderRadius: 4 },
                     ],
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    scales: { y: { beginAtZero: true } },
-                    plugins: { legend: { position: 'bottom' } },
+                    scales: {
+                        y: { beginAtZero: true },
+                        x: { ticks: { callback(value) {
+                            const label = String(this.getLabelForValue(value));
+                            return label.length > 18 ? `${label.slice(0, 18)}...` : label;
+                        } } },
+                    },
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: { callbacks: { title(items) { return chart.labels[items[0].dataIndex] || ''; } } },
+                    },
                 },
             });
         }

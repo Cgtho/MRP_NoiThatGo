@@ -8,7 +8,7 @@ declare(strict_types=1);
  * (YEUCAU.trangThai IN (0,1)) theo công thức:
  *   Nhu cầu NVL = SUM( CHITIETYEUCAU.soLuong * CHITIETTHANHPHAM.soLuong )
  *
- * Trả về JSON gồm: KPI tổng quan, dữ liệu biểu đồ top 10, và bảng cân đối vật tư.
+ * Trả về JSON gồm: KPI tổng quan, dữ liệu biểu đồ top 5, và bảng cân đối vật tư.
  */
 
 session_start();
@@ -83,12 +83,16 @@ try {
         return $b['nhuCau'] <=> $a['nhuCau'];
     });
 
-    // 3. Top 10 vật tư dùng nhiều nhất cho biểu đồ cột.
-    $top10 = array_slice($materials, 0, 10);
+    // 3. Top 5 vật tư được sử dụng nhiều nhất cho biểu đồ cột.
+    $usedMaterials = array_values(array_filter(
+        $materials,
+        static fn (array $m): bool => $m['nhuCau'] > 0
+    ));
+    $top5 = array_slice($usedMaterials, 0, 5);
     $chart = [
-        'labels' => array_map(static fn (array $m): string => $m['maNVL'], $top10),
-        'demand' => array_map(static fn (array $m): int => $m['nhuCau'], $top10),
-        'stock' => array_map(static fn (array $m): int => $m['tonKho'], $top10),
+        'labels' => array_map(static fn (array $m): string => $m['tenNVL'], $top5),
+        'demand' => array_map(static fn (array $m): int => $m['nhuCau'], $top5),
+        'stock' => array_map(static fn (array $m): int => $m['tonKho'], $top5),
     ];
 
     // 4. Đếm số lệnh sản xuất theo trạng thái cho biểu đồ tròn.
