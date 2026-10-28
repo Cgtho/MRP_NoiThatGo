@@ -1,4 +1,7 @@
 <?php
+// Giữ HTML chrome trong bộ đệm để nhánh tải CSV có thể gửi header tải file trước.
+$reportBufferLevel = ob_get_level();
+ob_start();
 require_once '../includes/header.php';
 require_once '../config/db.php';
 
@@ -192,28 +195,31 @@ usort($tpRows, static function (array $a, array $b) use ($tpStatusRank): int {
 
 // Xuất CSV + helpers hiển thị.
 if (($_GET['export'] ?? '') === 'csv' && $reportError === null) {
+    while (ob_get_level() > $reportBufferLevel) {
+        ob_end_clean();
+    }
     $fn = 'bao-cao-kho_' . preg_replace('/[^0-9A-Za-z]+/', '', $period) . '.csv';
     header('Content-Type: text/csv; charset=UTF-8');
     header('Content-Disposition: attachment; filename="' . $fn . '"');
     echo "\xEF\xBB\xBF";
     $out = fopen('php://output', 'w');
-    fputcsv($out, ['BAO CAO TON - NHAP - XUAT KHO (' . $periodLabel . ')']);
-    fputcsv($out, ['Tong nhap Nguyên Vật Liệu trong ky', $totalImportQty]);
-    fputcsv($out, ['Tong xuat Nguyên Vật Liệu san xuat (da duyet)', $totalExportNvlQty]);
-    fputcsv($out, ['Ton kho Nguyên Vật Liệu hien tai', $totalStockNvlQty]);
-    fputcsv($out, ['Thanh pham xuat ban (da duyet)', $totalExportTpQty]);
-    fputcsv($out, ['Thanh pham ton kho hien tai', $totalStockTpQty]);
-    fputcsv($out, []);
-    fputcsv($out, ['BANG 1: NGUYEN VAT LIEU']);
-    fputcsv($out, ['Ma NVL', 'Ten NVL', 'DVT', 'Nhap trong ky', 'Xuat SX (da duyet)', 'Ton cuoi ky']);
+    fputcsv($out, ['BAO CAO TON - NHAP - XUAT KHO (' . $periodLabel . ')'], ',', '"', '');
+    fputcsv($out, ['Tong nhap Nguyên Vật Liệu trong ky', $totalImportQty], ',', '"', '');
+    fputcsv($out, ['Tong xuat kho NVL (da duyet)', $totalExportNvlQty], ',', '"', '');
+    fputcsv($out, ['Ton kho Nguyên Vật Liệu hien tai', $totalStockNvlQty], ',', '"', '');
+    fputcsv($out, ['Thanh pham xuat ban (da duyet)', $totalExportTpQty], ',', '"', '');
+    fputcsv($out, ['Thanh pham ton kho hien tai', $totalStockTpQty], ',', '"', '');
+    fputcsv($out, [], ',', '"', '');
+    fputcsv($out, ['BANG 1: NGUYEN VAT LIEU'], ',', '"', '');
+    fputcsv($out, ['Ma NVL', 'Ten NVL', 'DVT', 'Nhap trong ky', 'Xuat kho da duyet', 'Ton hien tai'], ',', '"', '');
     foreach ($nvlRows as $rw) {
-        fputcsv($out, [$rw['maNVL'], $rw['tenNVL'], $rw['tenDVT'], $rw['tongNhap'], $rw['tongXuat'], $rw['tonKho']]);
+        fputcsv($out, [$rw['maNVL'], $rw['tenNVL'], $rw['tenDVT'], $rw['tongNhap'], $rw['tongXuat'], $rw['tonKho']], ',', '"', '');
     }
-    fputcsv($out, []);
-    fputcsv($out, ['BANG 2: THANH PHAM']);
-    fputcsv($out, ['Ma TP', 'Ten TP', 'DVT', 'Xuat ban (da duyet)', 'Ton kho']);
+    fputcsv($out, [], ',', '"', '');
+    fputcsv($out, ['BANG 2: THANH PHAM'], ',', '"', '');
+    fputcsv($out, ['Ma TP', 'Ten TP', 'DVT', 'Xuat ban (da duyet)', 'Ton kho'], ',', '"', '');
     foreach ($tpRows as $rw) {
-        fputcsv($out, [$rw['maTP'], $rw['tenTP'], $rw['donViTinh'], $rw['tongXuat'], $rw['tonKho']]);
+        fputcsv($out, [$rw['maTP'], $rw['tenTP'], $rw['donViTinh'], $rw['tongXuat'], $rw['tonKho']], ',', '"', '');
     }
     fclose($out);
     exit;
@@ -252,25 +258,27 @@ $qs = static function (array $o): string {
 ?>
 
 <!-- Header màn hình -->
-<div class="flex justify-between items-center mb-6">
-    <div>
-        <div class="flex items-center gap-3">
-            <div class="bg-purple-100 text-purple-600 p-2 rounded-lg text-xl"><i class="fa-solid fa-chart-simple"></i></div>
-            <div>
-                <h2 class="text-xl font-bold text-slate-800">Báo Cáo Thống Kê Số Lượng Tồn, Xuất & Lưu Kho</h2>
-                <p class="text-xs text-slate-500">Hệ thống tự động tổng hợp số liệu từ các phiếu nhập/xuất để xuất ra các bảng báo cáo theo tháng, quý, năm về vật liệu và sản phẩm.</p>
-            </div>
+<div class="relative mb-6 overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950 to-indigo-800 px-6 py-6 text-white shadow-lg">
+    <div class="pointer-events-none absolute -right-12 -top-24 h-64 w-64 rounded-full border-[30px] border-white/5"></div>
+    <div class="relative flex flex-wrap items-center justify-between gap-5">
+      <div class="flex items-center gap-4">
+        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/10 text-xl text-indigo-200 ring-1 ring-white/15"><i class="fa-solid fa-chart-line"></i></div>
+        <div>
+            <div class="mb-1 text-[10px] font-semibold uppercase tracking-[.2em] text-indigo-200">Trung tâm phân tích kho</div>
+            <h2 class="text-xl font-bold">Báo cáo tồn kho &amp; luân chuyển</h2>
+            <p class="mt-1 max-w-2xl text-xs leading-relaxed text-slate-300">Theo dõi nhập, xuất và mức tồn vật tư, thành phẩm theo kỳ báo cáo.</p>
         </div>
-    </div>
-    <div class="flex gap-2">
+      </div>
+      <div class="flex flex-wrap gap-2">
         <a href="?<?= htmlspecialchars($qs(['export' => 'csv', 'mode' => $mode, 'period' => $period]), ENT_QUOTES, 'UTF-8') ?>"
-           class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition flex items-center gap-2 text-sm">
-            <i class="fa-solid fa-download"></i> Xuất Excel / CSV
+           class="rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-indigo-50 flex items-center gap-2">
+            <i class="fa-solid fa-download text-indigo-600"></i> Tải CSV
         </a>
         <button type="button" onclick="window.print()"
-           class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg font-medium shadow-sm transition flex items-center gap-2 text-sm">
+           class="rounded-lg border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-white/20 flex items-center gap-2">
             <i class="fa-solid fa-print"></i> In Báo Cáo
         </button>
+      </div>
     </div>
 </div>
 
@@ -281,9 +289,9 @@ $qs = static function (array $o): string {
 <?php endif; ?>
 
 <!-- Bộ lọc -->
-<form method="get" class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center mb-6">
-    <div class="flex items-center gap-4">
-        <span class="text-sm font-medium text-slate-500 flex items-center gap-2"><i class="fa-solid fa-filter"></i> Kỳ báo cáo:</span>
+<form method="get" class="sticky top-0 z-30 mb-6 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white/95 p-4 shadow-md backdrop-blur">
+    <div class="flex flex-wrap items-center gap-3">
+        <span class="flex items-center gap-2 text-sm font-semibold text-slate-700"><i class="fa-solid fa-sliders text-indigo-500"></i> Kỳ báo cáo</span>
         <div class="flex bg-slate-100 rounded-lg p-1">
             <a href="?<?= htmlspecialchars($qs(['mode' => 'month', 'period' => array_values($availablePeriods['months'])[0]]), ENT_QUOTES, 'UTF-8') ?>"
                class="<?= $tabClass('month', $mode) ?>">Theo Tháng</a>
@@ -293,26 +301,29 @@ $qs = static function (array $o): string {
                class="<?= $tabClass('year', $mode) ?>">Theo Năm</a>
         </div>
     </div>
-    <div class="flex items-center gap-3">
+    <div class="flex flex-wrap items-center gap-3">
         <input type="hidden" name="mode" value="<?= htmlspecialchars($mode, ENT_QUOTES, 'UTF-8') ?>">
         <select name="period" onchange="this.form.submit()"
-           class="border border-slate-300 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:border-blue-500 font-medium text-slate-700">
+           class="min-w-40 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
             <?php foreach ($periodOptions as $opt): ?>
             <option value="<?= htmlspecialchars($opt, ENT_QUOTES, 'UTF-8') ?>" <?= $opt === $period ? 'selected' : '' ?>><?= htmlspecialchars($periodOptLabel($opt, $mode), ENT_QUOTES, 'UTF-8') ?><?= $opt === $list[0] ? ' (Kỳ hiện tại)' : '' ?></option>
             <?php endforeach; ?>
         </select>
-        <span class="text-[11px] text-slate-400">Số liệu tổng hợp theo kỳ: <?= htmlspecialchars($periodLabel, ENT_QUOTES, 'UTF-8') ?></span>
+        <span class="rounded-full bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700"><i class="fa-regular fa-calendar mr-1"></i><?= htmlspecialchars($periodLabel, ENT_QUOTES, 'UTF-8') ?></span>
     </div>
 </form>
 
 <!-- ================= MRP ANALYTICS DASHBOARD ================= -->
 <div id="mrpDashboard" class="mb-8">
-    <div class="flex items-center gap-3 mb-4">
-        <div class="bg-indigo-100 text-indigo-600 p-2 rounded-lg text-xl"><i class="fa-solid fa-diagram-project"></i></div>
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-100 text-lg text-indigo-600"><i class="fa-solid fa-diagram-project"></i></div>
         <div>
-            <h3 class="text-lg font-bold text-slate-800">Phân Tích MRP &amp; Cân Đối Vật Tư</h3>
-            <p class="text-xs text-slate-500">Tính nhu cầu nguyên vật liệu cho các lệnh sản xuất đang hoạt động (Chờ xử lý / Đang làm) theo định mức BOM.</p>
+            <h3 class="text-lg font-bold text-slate-800">Phân tích MRP &amp; cân đối vật tư</h3>
+            <p class="mt-0.5 text-xs text-slate-500">Nhu cầu vật tư cho các lệnh sản xuất đang hoạt động theo định mức BOM.</p>
         </div>
+      </div>
+      <span class="rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1.5 text-[11px] font-semibold text-indigo-700"><i class="fa-solid fa-arrows-left-right-to-line mr-1"></i> Nhu cầu so với tồn kho</span>
     </div>
 
     <!-- Loading -->
@@ -404,7 +415,7 @@ $qs = static function (array $o): string {
             </div>
 
             <div class="overflow-x-auto rounded-lg border border-slate-200 min-h-[420px]">
-                <table class="w-full text-left text-sm">
+                <table class="w-full min-w-[760px] text-left text-sm">
                     <thead class="bg-slate-50 text-slate-500 text-[10px] uppercase font-semibold">
                         <tr>
                             <th class="px-4 py-3 border-b border-slate-200">Mã NVL</th>
@@ -430,26 +441,26 @@ $qs = static function (array $o): string {
 <!-- =============== END MRP ANALYTICS DASHBOARD =============== -->
 
 <!-- 4 Thống kê -->
-<div class="grid grid-cols-4 gap-4 mb-6">
-    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+    <div class="group bg-white p-5 rounded-xl border border-slate-200 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
         <div class="flex justify-between items-start mb-2">
             <div class="text-xs font-semibold text-slate-500 uppercase">Tổng nhập nguyên vật liệu</div>
             <i class="fa-solid fa-arrow-right-to-bracket text-emerald-500"></i>
         </div>
-        <div class="text-3xl font-bold text-slate-800 mb-1">+<?= $fmt($totalImportQty) ?></div>
-        <div class="text-[11px] text-slate-400">Phiếu nhập đã duyệt (<?= htmlspecialchars($periodLabel, ENT_QUOTES, 'UTF-8') ?>)</div>
+        <div class="text-3xl font-bold text-slate-800 mb-1"><?= $totalImportQty > 0 ? '+' : '' ?><?= $fmt($totalImportQty) ?></div>
+        <div class="text-[11px] text-slate-400">Phiếu nhập trong kỳ (<?= htmlspecialchars($periodLabel, ENT_QUOTES, 'UTF-8') ?>)</div>
     </div>
     
-    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+    <div class="group bg-white p-5 rounded-xl border border-slate-200 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
         <div class="flex justify-between items-start mb-2">
-            <div class="text-xs font-semibold text-slate-500 uppercase">Tổng xuất Nguyên Vật Liệu làm hàng</div>
+            <div class="text-xs font-semibold text-slate-500 uppercase">Tổng nguyên vật liệu xuất kho</div>
             <i class="fa-solid fa-arrow-right-from-bracket text-orange-500"></i>
         </div>
-        <div class="text-3xl font-bold text-slate-800 mb-1">-<?= $fmt($totalExportNvlQty) ?></div>
-        <div class="text-[11px] text-slate-400">Cấp phát theo định mức sản xuất (đã duyệt)</div>
+        <div class="text-3xl font-bold text-slate-800 mb-1"><?= $totalExportNvlQty > 0 ? '-' : '' ?><?= $fmt($totalExportNvlQty) ?></div>
+        <div class="text-[11px] text-slate-400">Các phiếu xuất đã duyệt trong kỳ</div>
     </div>
 
-    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+    <div class="group bg-white p-5 rounded-xl border border-slate-200 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
         <div class="flex justify-between items-start mb-2">
             <div class="text-xs font-semibold text-slate-500 uppercase">Tồn kho Nguyên Vật Liệu lưu kho</div>
             <i class="fa-solid fa-cubes text-blue-500"></i>
@@ -458,7 +469,7 @@ $qs = static function (array $o): string {
         <div class="text-[11px] text-slate-400">Tổng cộng <?= $fmt($totalStockNvlKinds) ?> chủng loại vật tư</div>
     </div>
 
-    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+    <div class="group bg-white p-5 rounded-xl border border-slate-200 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
         <div class="flex justify-between items-start mb-2">
             <div class="text-xs font-semibold text-slate-500 uppercase">Thành phẩm xuất bán</div>
             <i class="fa-solid fa-box text-purple-500"></i>
@@ -469,22 +480,22 @@ $qs = static function (array $o): string {
 </div>
 
 <!-- Bảng chi tiết báo cáo -->
-<div class="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
-    <div class="flex justify-between items-end mb-4">
-        <h4 class="font-bold text-slate-800">1. Bảng Tổng Hợp Tồn, Nhập &amp; Xuất Nguyên Vật Liệu — <?= htmlspecialchars($periodLabel, ENT_QUOTES, 'UTF-8') ?></h4>
-        <span class="text-[11px] text-slate-400">Đơn vị tính quy chuẩn</span>
+<div class="bg-white border border-slate-200 rounded-xl shadow-sm p-4 sm:p-6">
+    <div class="flex flex-wrap justify-between items-end gap-2 mb-4">
+        <div><span class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-indigo-500">Báo cáo 01</span><h4 class="font-bold text-slate-800">Tồn, nhập &amp; xuất nguyên vật liệu</h4></div>
+        <span class="text-[11px] text-slate-400"><i class="fa-solid fa-ruler-combined mr-1"></i>Đơn vị tính quy chuẩn</span>
     </div>
     
     <div class="overflow-x-auto overflow-y-auto max-h-[480px] scrollbar-custom rounded-lg border border-slate-200">
-        <table class="w-full text-left text-sm">
+        <table class="w-full min-w-[760px] text-left text-sm">
             <thead class="bg-slate-50 text-slate-500 text-[10px] uppercase font-semibold sticky top-0 z-10">
                 <tr>
                     <th class="px-4 py-3 border-b border-slate-200">Mã NVL</th>
                     <th class="px-4 py-3 border-b border-slate-200">Tên Nguyên Vật Liệu</th>
                     <th class="px-4 py-3 border-b border-slate-200">ĐVT</th>
                     <th class="px-4 py-3 text-center border-b border-slate-200">Tổng nhập trong kỳ</th>
-                    <th class="px-4 py-3 text-center border-b border-slate-200">Tổng xuất sản xuất</th>
-                    <th class="px-4 py-3 text-right border-b border-slate-200">Số lượng tồn cuối kỳ</th>
+                    <th class="px-4 py-3 text-center border-b border-slate-200">Tổng xuất kho đã duyệt</th>
+                    <th class="px-4 py-3 text-right border-b border-slate-200">Tồn kho hiện tại</th>
                     <th class="px-4 py-3 text-center border-b border-slate-200">Tình trạng</th>
                 </tr>
             </thead>
@@ -498,8 +509,8 @@ $qs = static function (array $o): string {
                     <td class="px-4 py-3 font-bold text-slate-800"><?= htmlspecialchars($r['maNVL'], ENT_QUOTES, 'UTF-8') ?></td>
                     <td class="px-4 py-3 text-slate-700"><?= htmlspecialchars($r['tenNVL'], ENT_QUOTES, 'UTF-8') ?></td>
                     <td class="px-4 py-3 text-slate-500"><?= htmlspecialchars($r['tenDVT'], ENT_QUOTES, 'UTF-8') ?></td>
-                    <td class="px-4 py-3 text-center text-emerald-600 font-medium">+<?= $fmt($r['tongNhap']) ?></td>
-                    <td class="px-4 py-3 text-center text-orange-500 font-medium">-<?= $fmt($r['tongXuat']) ?></td>
+                    <td class="px-4 py-3 text-center text-emerald-600 font-medium"><?= (int)$r['tongNhap'] > 0 ? '+' : '' ?><?= $fmt($r['tongNhap']) ?></td>
+                    <td class="px-4 py-3 text-center text-orange-500 font-medium"><?= (int)$r['tongXuat'] > 0 ? '-' : '' ?><?= $fmt($r['tongXuat']) ?></td>
                     <td class="px-4 py-3 text-right font-bold text-blue-600"><?= $fmt($r['tonKho']) ?> <?= htmlspecialchars($r['tenDVT'], ENT_QUOTES, 'UTF-8') ?></td>
                     <td class="px-4 py-3 text-center"><span class="border text-[10px] px-2 py-0.5 rounded font-medium <?= $stClass ?>"><?= $stLabel ?></span></td>
                 </tr>
@@ -511,14 +522,14 @@ $qs = static function (array $o): string {
 </div>
 
 <!-- Bảng tổng hợp sản xuất & xuất bán thành phẩm -->
-<div class="bg-white border border-slate-200 rounded-xl shadow-sm p-6 mt-6">
-    <div class="flex justify-between items-end mb-4">
-        <h4 class="font-bold text-slate-800">2. Bảng Tổng Hợp Sản Xuất &amp; Xuất Bán Thành Phẩm — <?= htmlspecialchars($periodLabel, ENT_QUOTES, 'UTF-8') ?></h4>
-        <span class="text-[11px] text-slate-400">Lưu kho thành phẩm</span>
+<div class="bg-white border border-slate-200 rounded-xl shadow-sm p-4 sm:p-6 mt-6">
+    <div class="flex flex-wrap justify-between items-end gap-2 mb-4">
+        <div><span class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-emerald-600">Báo cáo 02</span><h4 class="font-bold text-slate-800">Xuất bán &amp; tồn thành phẩm</h4></div>
+        <span class="text-[11px] text-slate-400"><i class="fa-solid fa-boxes-stacked mr-1"></i>Lưu kho thành phẩm</span>
     </div>
 
     <div class="overflow-x-auto overflow-y-auto max-h-[480px] scrollbar-custom rounded-lg border border-slate-200">
-        <table class="w-full text-left text-sm">
+        <table class="w-full min-w-[700px] text-left text-sm">
             <thead class="bg-slate-50 text-slate-500 text-[10px] uppercase font-semibold sticky top-0 z-10">
                 <tr>
                     <th class="px-4 py-3 border-b border-slate-200">Mã TP</th>
