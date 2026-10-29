@@ -3,8 +3,7 @@ require_once __DIR__ . '/../includes/header.php';
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../includes/csrf.php';
 
-// Quản lý kho và quản trị hệ thống được truy cập trang quản lý tài khoản.
-if (!$isManager && !$isAdmin) {
+if (!$isManager) {
     header('Location: dashboard.php');
     exit;
 }
@@ -12,9 +11,7 @@ if (!$isManager && !$isAdmin) {
 $search = trim((string) ($_GET['search'] ?? ''));
 $requestedRole = $_GET['role'] ?? 'all';
 $roleFilter = in_array($requestedRole, ['all', 'admin', 'manager', 'staff'], true) ? $requestedRole : 'all';
-if (!$isAdmin && $roleFilter === 'admin') {
-    $roleFilter = 'all';
-}
+$roleFilter = $roleFilter === 'admin' ? 'all' : $roleFilter;
 
 $requestedStatus = $_GET['status'] ?? 'all';
 $statusFilter = in_array($requestedStatus, ['all', 'active', 'locked'], true) ? $requestedStatus : 'all';
@@ -36,7 +33,8 @@ try {
                 COALESCE(SUM(vaiTro = 2), 0) AS admins,
                 COALESCE(SUM(trangThai = 1), 0) AS active,
                 COALESCE(SUM(trangThai = 0), 0) AS locked
-         FROM NHANVIEN' . ($isAdmin ? '' : ' WHERE vaiTro <> 2')
+         FROM NHANVIEN
+         WHERE vaiTro <> 2'
     )->fetch() ?: [];
     $stats = [
         'total' => (int) ($statsRow['total'] ?? 0),
@@ -50,9 +48,7 @@ try {
     $conditions = [];
     $params = [];
 
-    if (!$isAdmin) {
-        $conditions[] = 'vaiTro <> 2';
-    }
+    $conditions[] = 'vaiTro <> 2';
 
     if ($search !== '') {
         $conditions[] = '(maNV LIKE :searchMa OR hoTen LIKE :searchTen)';
@@ -191,11 +187,6 @@ $endPage = min($totalPages, $page + 2);
         <a href="<?= htmlspecialchars($roleUrl('all'), ENT_QUOTES, 'UTF-8') ?>" class="<?= $roleFilter === 'all' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800' ?> text-[13px] font-medium px-4 py-2 rounded-lg flex items-center gap-2 transition">
             <i class="fa-solid fa-list"></i> Tất cả (<?= number_format($stats['total']) ?>)
         </a>
-        <?php if ($isAdmin): ?>
-            <a href="<?= htmlspecialchars($roleUrl('admin'), ENT_QUOTES, 'UTF-8') ?>" class="<?= $roleFilter === 'admin' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800' ?> text-[13px] font-medium px-4 py-2 rounded-lg flex items-center gap-2 transition">
-                <i class="fa-solid fa-user-shield"></i> Admin (<?= number_format($stats['admins']) ?>)
-            </a>
-        <?php endif; ?>
         <a href="<?= htmlspecialchars($roleUrl('manager'), ENT_QUOTES, 'UTF-8') ?>" class="<?= $roleFilter === 'manager' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800' ?> text-[13px] font-medium px-4 py-2 rounded-lg flex items-center gap-2 transition">
             <i class="fa-solid fa-crown"></i> Quản lý kho (<?= number_format($stats['managers']) ?>)
         </a>

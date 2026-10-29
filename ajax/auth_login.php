@@ -27,6 +27,7 @@ require_once __DIR__ . '/../config/db.php';
 
 $employeeId = strtoupper(trim((string) ($_POST['employeeId'] ?? '')));
 $password = (string) ($_POST['password'] ?? '');
+$loginScope = (string) ($_POST['loginScope'] ?? 'app');
 
 if ($employeeId === '' || $password === '') {
     http_response_code(422);
@@ -44,7 +45,19 @@ try {
     $stmt->execute(['maNV' => $employeeId]);
     $employee = $stmt->fetch();
 
-    if (!$employee || !password_verify($password, $employee['matKhau'])) {
+    if (!$employee) {
+        http_response_code(401);
+        echo json_encode(['success' => false, 'message' => 'Mã nhân viên hoặc mật khẩu không đúng.']);
+        exit;
+    }
+
+    if ($loginScope !== 'admin' && (int) $employee['vaiTro'] === 2) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Tài khoản admin vui lòng đăng nhập tại khu vực quản trị.']);
+        exit;
+    }
+
+    if (!password_verify($password, $employee['matKhau'])) {
         http_response_code(401);
         echo json_encode(['success' => false, 'message' => 'Mã nhân viên hoặc mật khẩu không đúng.']);
         exit;
@@ -56,15 +69,23 @@ try {
         exit;
     }
 
+    if ($loginScope === 'admin' && (int) $employee['vaiTro'] !== 2) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Chỉ tài khoản quản trị hệ thống mới được đăng nhập khu vực quản trị.']);
+        exit;
+    }
+
     session_regenerate_id(true);
     $_SESSION['current_user'] = $employee['maNV'];
     $_SESSION['user_name'] = $employee['hoTen'];
     $_SESSION['role'] = (int) $employee['vaiTro'];
 
+    $redirect = $loginScope === 'admin' ? 'employees.php' : 'views/dashboard.php';
+
     echo json_encode([
         'success' => true,
         'message' => 'Đăng nhập thành công.',
-        'redirect' => './views/dashboard.php',
+        'redirect' => $redirect,
     ]);
 } catch (PDOException $e) {
     http_response_code(500);

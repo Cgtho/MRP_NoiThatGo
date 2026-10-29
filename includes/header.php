@@ -4,7 +4,10 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 if (!isset($_SESSION['current_user'], $_SESSION['user_name'], $_SESSION['role'])) {
-    header('Location: ../index.php');
+    $loginPath = strpos((string) ($_SERVER['SCRIPT_NAME'] ?? ''), '/admin/') !== false
+        ? '../admin/index.php'
+        : '../index.php';
+    header('Location: ' . $loginPath);
     exit;
 }
 
@@ -16,8 +19,14 @@ $isAdmin = (int) $_SESSION['role'] === 2;
 $roleLabel = $isAdmin ? 'Quản trị hệ thống' : ($isManager ? 'Quản lý kho' : 'Nhân viên kho');
 $roleIcon = $isAdmin ? 'fa-user-shield' : ($isManager ? 'fa-crown' : 'fa-user');
 
-if ($isAdmin && basename($_SERVER['PHP_SELF']) !== 'employees.php') {
-    header('Location: employees.php');
+if ($isAdmin && (
+    strpos((string) ($_SERVER['SCRIPT_NAME'] ?? ''), '/admin/') === false
+    || basename($_SERVER['PHP_SELF']) !== 'employees.php'
+)) {
+    $adminEmployeesPath = strpos((string) ($_SERVER['SCRIPT_NAME'] ?? ''), '/admin/') !== false
+        ? 'employees.php'
+        : '../admin/employees.php';
+    header('Location: ' . $adminEmployeesPath);
     exit;
 }
 ?>
@@ -116,4 +125,4 @@ if ($isAdmin && basename($_SERVER['PHP_SELF']) !== 'employees.php') {
 </div>
 
 <div class="flex flex-1 overflow-hidden">
-<?php include 'sidebar.php'; ?>
+<?php include __DIR__ . '/sidebar.php'; ?>

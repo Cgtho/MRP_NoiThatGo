@@ -2,7 +2,10 @@
 session_start();
 
 if (isset($_SESSION['current_user'])) {
-    header('Location: ./views/dashboard.php');
+    $redirect = (int) ($_SESSION['role'] ?? 1) === 2
+        ? './admin/employees.php'
+        : './views/dashboard.php';
+    header('Location: ' . $redirect);
     exit;
 }
 ?>

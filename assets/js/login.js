@@ -8,14 +8,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const submitButton = form.querySelector('button[type="submit"]');
     const togglePassword = document.getElementById('togglePassword');
     const rememberAccount = document.getElementById('rememberAccount');
-    const rememberedEmployeeId = localStorage.getItem('mrp_employee_id');
+    const isAdminLogin = form.querySelector('input[name="loginScope"][value="admin"]') !== null;
+    const rememberedEmployeeId = isAdminLogin ? null : localStorage.getItem('mrp_employee_id');
 
-    if (rememberedEmployeeId) {
+    if (rememberedEmployeeId && rememberAccount) {
         employeeId.value = rememberedEmployeeId;
         rememberAccount.checked = true;
     }
 
-    rememberAccount.addEventListener('change', () => {
+    rememberAccount?.addEventListener('change', () => {
         if (!rememberAccount.checked) {
             localStorage.removeItem('mrp_employee_id');
         }
@@ -36,7 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
 
-        if (!rememberAccount.checked) {
+        if (!isAdminLogin && !rememberAccount.checked) {
             localStorage.removeItem('mrp_employee_id');
         }
 
@@ -68,9 +69,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            if (rememberAccount.checked) {
+            if (!isAdminLogin && rememberAccount.checked) {
                 localStorage.setItem('mrp_employee_id', employeeId.value.trim().toUpperCase());
-            } else {
+            } else if (!isAdminLogin) {
                 localStorage.removeItem('mrp_employee_id');
             }
 

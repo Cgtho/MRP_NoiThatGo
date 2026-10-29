@@ -1,0 +1,8 @@
+RewriteEngine On
+
+# Chỉ employees.php là trang nội bộ của khu vực quản trị.
+# Các đường dẫn admin khác (ví dụ đổi /views/dashboard.php thành /admin/dashboard.php)
+# dùng trang đăng nhập thay vì trả về lỗi 404.
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [L]
