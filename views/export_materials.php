@@ -161,7 +161,7 @@ require_once '../includes/header.php';
 ?>
 
 <div class="flex justify-between items-center mb-6">
-    <div class="flex items-center gap-3"><div class="bg-orange-100 text-orange-600 p-2 rounded-lg text-xl"><i class="fa-solid fa-dolly"></i></div><div><h2 class="text-xl font-bold text-slate-800">Xuất Kho Nguyên Vật Liệu</h2><p class="text-xs text-slate-500">Nhân viên hoặc quản lý lập phiếu, quản lý duyệt trước khi trừ tồn kho.</p></div></div>
+    <div class="flex items-center gap-3"><div class="bg-orange-100 text-orange-600 p-2 rounded-lg text-xl"><i class="fa-solid fa-dolly"></i></div><div><h2 class="text-xl font-bold text-slate-800">Xuất Kho Nguyên Vật Liệu</h2><p class="text-xs text-slate-500">Nhân viên lập phiếu, quản lý duyệt trước khi trừ tồn kho.</p></div></div>
     <?php if (!$isManager): ?>
         <button id="btn-open-export" type="button" class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition flex items-center gap-2"><i class="fa-solid fa-plus"></i> Tạo Phiếu Xuất NVL</button>
     <?php endif; ?>
