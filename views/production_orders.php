@@ -502,15 +502,6 @@ require_once '../includes/header.php';
 <script src="../assets/js/production.js"></script>
 <?php endif; ?>
 <?php if ($successMessage !== null): ?>
-<script>
-    const productionSuccessToast = document.getElementById('productionSuccessToast');
-    const closeProductionSuccessToast = document.getElementById('closeProductionSuccessToast');
-    const dismissProductionSuccessToast = () => {
-        productionSuccessToast?.remove();
-    };
-
-    closeProductionSuccessToast?.addEventListener('click', dismissProductionSuccessToast);
-    window.setTimeout(dismissProductionSuccessToast, 5000);
-</script>
+<script src="../assets/js/production_toast.js"></script>
 <?php endif; ?>
 <?php require_once '../includes/footer.php'; ?>

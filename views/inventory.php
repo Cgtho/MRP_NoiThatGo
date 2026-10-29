@@ -287,45 +287,6 @@ try {
             </form>
         </div>
     </div>
-    <script>
-        const addMaterialModal = document.getElementById('addMaterialModal');
-        const addMaterialForm = document.getElementById('addMaterialForm');
-        const addMaterialMessage = document.getElementById('addMaterialMessage');
-        const closeAddMaterial = () => {
-            addMaterialModal.classList.add('hidden');
-            addMaterialModal.classList.remove('flex');
-        };
-
-        document.getElementById('openAddMaterialModal').addEventListener('click', () => {
-            addMaterialModal.classList.remove('hidden');
-            addMaterialModal.classList.add('flex');
-            document.getElementById('materialName').focus();
-        });
-        document.getElementById('closeAddMaterialModal').addEventListener('click', closeAddMaterial);
-        document.getElementById('cancelAddMaterial').addEventListener('click', closeAddMaterial);
-
-        addMaterialForm.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            addMaterialMessage.className = 'mt-3 hidden rounded-lg px-3 py-2 text-sm';
-            try {
-                const response = await fetch(addMaterialForm.action, {
-                    method: 'POST',
-                    body: new FormData(addMaterialForm),
-                    headers: { Accept: 'application/json' },
-                });
-                const result = await response.json();
-                if (!response.ok || !result.success) {
-                    addMaterialMessage.textContent = result.message || 'Không thể thêm nguyên vật liệu.';
-                    addMaterialMessage.className = 'mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600';
-                    return;
-                }
-                window.location.href = 'inventory.php?view=warehouse_materials';
-            } catch (error) {
-                addMaterialMessage.textContent = 'Không thể kết nối máy chủ.';
-                addMaterialMessage.className = 'mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600';
-            }
-        });
-    </script>
 <?php elseif ($view === 'units' && $canManageMasterData): ?>
     <div id="addUnitModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 items-center justify-center px-4">
         <div class="bg-white rounded-xl w-full max-w-md shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="addUnitTitle">
@@ -346,49 +307,10 @@ try {
             </form>
         </div>
     </div>
-    <script>
-        const addUnitModal = document.getElementById('addUnitModal');
-        const addUnitForm = document.getElementById('addUnitForm');
-        const addUnitMessage = document.getElementById('addUnitMessage');
-        const closeAddUnit = () => addUnitModal.classList.add('hidden');
-
-        document.getElementById('openAddUnitModal').addEventListener('click', () => {
-            addUnitModal.classList.remove('hidden');
-            addUnitModal.classList.add('flex');
-            document.getElementById('unitName').focus();
-        });
-        document.getElementById('closeAddUnitModal').addEventListener('click', closeAddUnit);
-        document.getElementById('cancelAddUnit').addEventListener('click', closeAddUnit);
-
-        addUnitForm.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            addUnitMessage.className = 'mt-3 hidden rounded-lg px-3 py-2 text-sm';
-
-            try {
-                const response = await fetch(addUnitForm.action, {
-                    method: 'POST',
-                    body: new FormData(addUnitForm),
-                    headers: { Accept: 'application/json' },
-                });
-                const result = await response.json();
-
-                if (!response.ok || !result.success) {
-                    addUnitMessage.textContent = result.message || 'Không thể thêm đơn vị tính.';
-                    addUnitMessage.className = 'mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600';
-                    return;
-                }
-
-                window.location.href = 'inventory.php?view=units';
-            } catch (error) {
-                addUnitMessage.textContent = 'Không thể kết nối máy chủ.';
-                addUnitMessage.className = 'mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600';
-            }
-        });
-    </script>
 <?php endif; ?>
 
 <?php if ($canManageMasterData): ?>
-    <div id="masterActionConfirmModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-slate-900/50 px-4" role="dialog" aria-modal="true" aria-labelledby="masterActionConfirmTitle" aria-describedby="masterActionConfirmMessage">
+    <div id="masterActionConfirmModal" data-csrf-token="<?= htmlspecialchars(csrf_token(), ENT_QUOTES, 'UTF-8') ?>" class="fixed inset-0 z-[70] hidden items-center justify-center bg-slate-900/50 px-4" role="dialog" aria-modal="true" aria-labelledby="masterActionConfirmTitle" aria-describedby="masterActionConfirmMessage">
         <div class="w-full max-w-md rounded-xl bg-white shadow-2xl">
             <div class="flex items-center justify-between border-b border-slate-200 px-5 py-4">
                 <h3 id="masterActionConfirmTitle" class="font-bold text-slate-800">Xác nhận thao tác</h3>
@@ -407,110 +329,5 @@ try {
     </div>
 <?php endif; ?>
 
-<script>
-    const inventorySearchInput = document.querySelector('#inventorySearch input[name="search"]');
-    const masterStatusFilter = document.getElementById('masterStatusFilter');
-    const inventoryRows = [...document.querySelectorAll('[data-inventory-row]')];
-    const inventoryEmptyRow = document.getElementById('inventoryEmptyRow');
-    const inventoryFilterEmptyRow = document.getElementById('inventoryFilterEmptyRow');
-
-    inventorySearchInput?.addEventListener('input', () => {
-        const searchValue = inventorySearchInput.value.trim().toLocaleLowerCase();
-        let visibleRows = 0;
-
-        inventoryRows.forEach((row) => {
-            const matches = row.textContent.toLocaleLowerCase().includes(searchValue);
-            row.classList.toggle('hidden', !matches);
-            visibleRows += matches ? 1 : 0;
-        });
-
-        if (inventoryEmptyRow) {
-            inventoryEmptyRow.classList.toggle('hidden', visibleRows > 0 || searchValue === '');
-        }
-        inventoryFilterEmptyRow?.classList.toggle('hidden', visibleRows > 0 || searchValue === '');
-    });
-
-    masterStatusFilter?.addEventListener('change', () => {
-        const url = new URL(window.location.href);
-        url.searchParams.set('status', masterStatusFilter.value);
-        url.searchParams.delete('search');
-        window.location.href = url.toString();
-    });
-
-    const masterActionConfirmModal = document.getElementById('masterActionConfirmModal');
-    const masterActionConfirmMessage = document.getElementById('masterActionConfirmMessage');
-    const acceptMasterActionConfirm = document.getElementById('acceptMasterActionConfirm');
-    const closeMasterActionConfirm = document.getElementById('closeMasterActionConfirm');
-    const cancelMasterActionConfirm = document.getElementById('cancelMasterActionConfirm');
-    let resolveMasterActionConfirm = null;
-
-    const closeMasterActionDialog = (confirmed) => {
-        masterActionConfirmModal?.classList.add('hidden');
-        masterActionConfirmModal?.classList.remove('flex');
-        if (resolveMasterActionConfirm) {
-            resolveMasterActionConfirm(confirmed);
-            resolveMasterActionConfirm = null;
-        }
-    };
-
-    const askMasterActionConfirmation = (message) => new Promise((resolve) => {
-        if (!masterActionConfirmModal || !masterActionConfirmMessage) {
-            resolve(false);
-            return;
-        }
-        masterActionConfirmMessage.textContent = message;
-        resolveMasterActionConfirm = resolve;
-        masterActionConfirmModal.classList.remove('hidden');
-        masterActionConfirmModal.classList.add('flex');
-        acceptMasterActionConfirm?.focus();
-    });
-
-    acceptMasterActionConfirm?.addEventListener('click', () => closeMasterActionDialog(true));
-    closeMasterActionConfirm?.addEventListener('click', () => closeMasterActionDialog(false));
-    cancelMasterActionConfirm?.addEventListener('click', () => closeMasterActionDialog(false));
-    masterActionConfirmModal?.addEventListener('click', (event) => {
-        if (event.target === masterActionConfirmModal) {
-            closeMasterActionDialog(false);
-        }
-    });
-
-    document.querySelectorAll('[data-master-action]').forEach((button) => {
-        button.addEventListener('click', async () => {
-            const action = button.dataset.masterAction;
-            const entity = button.dataset.masterEntity;
-            const code = button.dataset.masterCode;
-            const isDelete = action === 'delete';
-            const confirmationMessage = isDelete
-                ? `Xóa vĩnh viễn ${code}? Thao tác này không thể hoàn tác.`
-                : `${action === 'hide' ? 'Ẩn' : 'Hiển thị lại'} ${code}?`;
-
-            if (!await askMasterActionConfirmation(confirmationMessage)) {
-                return;
-            }
-
-            button.disabled = true;
-            try {
-                const body = new FormData();
-                body.append('csrf_token', <?= json_encode(csrf_token()) ?>);
-                body.append('entity', entity);
-                body.append('code', code);
-                body.append('action', action);
-                const response = await fetch('../ajax/manage_master_data.php', {
-                    method: 'POST',
-                    body,
-                    headers: { Accept: 'application/json' },
-                });
-                const result = await response.json();
-                if (!response.ok || !result.success) {
-                    throw new Error(result.message || 'Không thể cập nhật dữ liệu.');
-                }
-                window.location.reload();
-            } catch (error) {
-                window.alert(error.message || 'Không thể kết nối máy chủ.');
-                button.disabled = false;
-            }
-        });
-    });
-</script>
-
+<script src="../assets/js/inventory.js"></script>
 <?php require_once '../includes/footer.php'; ?>

@@ -339,7 +339,7 @@ $qs = static function (array $o): string {
     </div>
     <div class="flex flex-wrap items-center gap-3">
         <input type="hidden" name="mode" value="<?= htmlspecialchars($mode, ENT_QUOTES, 'UTF-8') ?>">
-        <select name="period" onchange="sessionStorage.setItem('reports-period-scroll-y', String(document.querySelector('main').scrollTop)); this.form.submit()"
+        <select name="period"
            class="min-w-40 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100">
             <?php foreach ($periodOptions as $opt): ?>
             <option value="<?= htmlspecialchars($opt, ENT_QUOTES, 'UTF-8') ?>" <?= $opt === $period ? 'selected' : '' ?>><?= htmlspecialchars($periodOptLabel($opt, $mode), ENT_QUOTES, 'UTF-8') ?><?= $opt === $list[0] ? ' (Kỳ hiện tại)' : '' ?></option>
@@ -470,28 +470,7 @@ $qs = static function (array $o): string {
     </div>
 </div>
 
-<script>
-(() => {
-    const scrollKey = 'reports-period-scroll-y';
-    const scrollContainer = document.querySelector('main');
-    if (!scrollContainer) return;
-    const rememberPosition = () => sessionStorage.setItem(scrollKey, String(scrollContainer.scrollTop));
-    document.querySelector('form[method="get"]')?.addEventListener('submit', rememberPosition);
-    document.querySelectorAll('form[method="get"] a[href*="mode="]').forEach((link) => {
-        link.addEventListener('click', rememberPosition);
-    });
-    const savedPosition = sessionStorage.getItem(scrollKey);
-    if (savedPosition !== null) {
-        sessionStorage.removeItem(scrollKey);
-        const restorePosition = () => { scrollContainer.scrollTop = Number(savedPosition) || 0; };
-        window.addEventListener('load', restorePosition, { once: true });
-        window.addEventListener('pageshow', restorePosition, { once: true });
-        requestAnimationFrame(() => requestAnimationFrame(restorePosition));
-        window.setTimeout(restorePosition, 100);
-        window.setTimeout(restorePosition, 400);
-    }
-})();
-</script>
+<script src="../assets/js/reports.js"></script>
 
 <?php require_once '../includes/footer.php'; ?>
 

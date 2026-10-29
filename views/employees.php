@@ -12,6 +12,9 @@ if (!$isManager && !$isAdmin) {
 $search = trim((string) ($_GET['search'] ?? ''));
 $requestedRole = $_GET['role'] ?? 'all';
 $roleFilter = in_array($requestedRole, ['all', 'admin', 'manager', 'staff'], true) ? $requestedRole : 'all';
+if (!$isAdmin && $roleFilter === 'admin') {
+    $roleFilter = 'all';
+}
 
 $requestedStatus = $_GET['status'] ?? 'all';
 $statusFilter = in_array($requestedStatus, ['all', 'active', 'locked'], true) ? $requestedStatus : 'all';
@@ -33,7 +36,7 @@ try {
                 COALESCE(SUM(vaiTro = 2), 0) AS admins,
                 COALESCE(SUM(trangThai = 1), 0) AS active,
                 COALESCE(SUM(trangThai = 0), 0) AS locked
-         FROM NHANVIEN'
+         FROM NHANVIEN' . ($isAdmin ? '' : ' WHERE vaiTro <> 2')
     )->fetch() ?: [];
     $stats = [
         'total' => (int) ($statsRow['total'] ?? 0),
@@ -46,6 +49,10 @@ try {
 
     $conditions = [];
     $params = [];
+
+    if (!$isAdmin) {
+        $conditions[] = 'vaiTro <> 2';
+    }
 
     if ($search !== '') {
         $conditions[] = '(maNV LIKE :searchMa OR hoTen LIKE :searchTen)';
@@ -184,9 +191,11 @@ $endPage = min($totalPages, $page + 2);
         <a href="<?= htmlspecialchars($roleUrl('all'), ENT_QUOTES, 'UTF-8') ?>" class="<?= $roleFilter === 'all' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800' ?> text-[13px] font-medium px-4 py-2 rounded-lg flex items-center gap-2 transition">
             <i class="fa-solid fa-list"></i> Tất cả (<?= number_format($stats['total']) ?>)
         </a>
-        <a href="<?= htmlspecialchars($roleUrl('admin'), ENT_QUOTES, 'UTF-8') ?>" class="<?= $roleFilter === 'admin' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800' ?> text-[13px] font-medium px-4 py-2 rounded-lg flex items-center gap-2 transition">
-            <i class="fa-solid fa-user-shield"></i> Admin (<?= number_format($stats['admins']) ?>)
-        </a>
+        <?php if ($isAdmin): ?>
+            <a href="<?= htmlspecialchars($roleUrl('admin'), ENT_QUOTES, 'UTF-8') ?>" class="<?= $roleFilter === 'admin' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800' ?> text-[13px] font-medium px-4 py-2 rounded-lg flex items-center gap-2 transition">
+                <i class="fa-solid fa-user-shield"></i> Admin (<?= number_format($stats['admins']) ?>)
+            </a>
+        <?php endif; ?>
         <a href="<?= htmlspecialchars($roleUrl('manager'), ENT_QUOTES, 'UTF-8') ?>" class="<?= $roleFilter === 'manager' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800' ?> text-[13px] font-medium px-4 py-2 rounded-lg flex items-center gap-2 transition">
             <i class="fa-solid fa-crown"></i> Quản lý kho (<?= number_format($stats['managers']) ?>)
         </a>
@@ -196,7 +205,7 @@ $endPage = min($totalPages, $page + 2);
     </div>
     <form id="employeeSearch" method="get" class="flex items-center gap-2">
         <input type="hidden" name="role" value="<?= htmlspecialchars($roleFilter, ENT_QUOTES, 'UTF-8') ?>">
-        <select name="status" onchange="this.form.submit()" aria-label="Lọc theo trạng thái" class="text-sm text-slate-600 border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500 shadow-sm bg-white">
+        <select name="status" aria-label="Lọc theo trạng thái" class="text-sm text-slate-600 border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500 shadow-sm bg-white">
             <option value="all" <?= $statusFilter === 'all' ? 'selected' : '' ?>>Tất cả trạng thái</option>
             <option value="active" <?= $statusFilter === 'active' ? 'selected' : '' ?>>Hoạt động</option>
             <option value="locked" <?= $statusFilter === 'locked' ? 'selected' : '' ?>>Đã khóa</option>
@@ -275,7 +284,7 @@ $endPage = min($totalPages, $page + 2);
                                         data-self="<?= $isSelf ? '1' : '0' ?>">
                                         <i class="fa-solid fa-pen-to-square"></i>
                                     </button>
-                                    <?php $canChangeStatus = !$isSelf && !($empRole === 0 && !$isAdmin); ?>
+                                    <?php $canChangeStatus = !$isSelf && !($isProtectedAccount); ?>
                                     <button type="button" class="lock-employee p-1.5 <?= $empStatus === 1 ? 'text-rose-600 hover:bg-rose-50' : 'text-emerald-600 hover:bg-emerald-50' ?> rounded transition disabled:opacity-40 disabled:cursor-not-allowed" title="<?= $canChangeStatus ? ($empStatus === 1 ? 'Khóa nhân viên' : 'Mở khóa nhân viên') : 'Không thể thay đổi trạng thái tài khoản này' ?>" <?= $canChangeStatus ? '' : 'disabled' ?>
                                         data-manv="<?= htmlspecialchars($employee['maNV'], ENT_QUOTES, 'UTF-8') ?>"
                                         data-hotenn="<?= htmlspecialchars($employee['hoTen'], ENT_QUOTES, 'UTF-8') ?>"
@@ -466,160 +475,6 @@ $endPage = min($totalPages, $page + 2);
         </form>
     </div>
 </div>
-<script>
-    (function () {
-        const addMessage = document.getElementById('addEmployeeMessage');
-        const editMessage = document.getElementById('editEmployeeMessage');
-        const lockMessage = document.getElementById('lockEmployeeMessage');
-
-        // Tải lại trang nhưng giữ nguyên bộ lọc và trang hiện tại.
-        const currentQuery = <?= json_encode($currentQuery, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
-        const reloadUrl = 'employees.php' + (currentQuery ? '?' + currentQuery : '');
-
-        const openModal = (modal) => {
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-        };
-        const closeModal = (modal) => {
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-        };
-        const setMessage = (el, text, ok) => {
-            el.textContent = text;
-            el.className = ok
-                ? 'mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-600'
-                : 'mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600';
-        };
-        const clearMessage = (el) => {
-            el.className = 'mt-4 hidden rounded-lg px-3 py-2 text-sm';
-            el.textContent = '';
-        };
-        const submitForm = async (form, messageEl) => {
-            clearMessage(messageEl);
-            try {
-                const response = await fetch(form.action, {
-                    method: 'POST',
-                    body: new FormData(form),
-                    headers: { Accept: 'application/json' },
-                });
-                const result = await response.json();
-                if (!response.ok || !result.success) {
-                    setMessage(messageEl, result.message || 'Thao tác không thành công.', false);
-                    return false;
-                }
-                return true;
-            } catch (error) {
-                setMessage(messageEl, 'Không thể kết nối máy chủ.', false);
-                return false;
-            }
-        };
-
-        // ---- Thêm nhân viên ----
-        const addModal = document.getElementById('addEmployeeModal');
-        const addForm = document.getElementById('addEmployeeForm');
-
-        document.getElementById('openAddEmployeeModal').addEventListener('click', () => {
-            addForm.reset();
-            clearMessage(addMessage);
-            openModal(addModal);
-            document.getElementById('addVaiTro').focus();
-        });
-        document.getElementById('closeAddEmployeeModal').addEventListener('click', () => closeModal(addModal));
-        document.getElementById('cancelAddEmployee').addEventListener('click', () => closeModal(addModal));
-
-        addForm.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            if (await submitForm(addForm, addMessage)) {
-                window.location.href = reloadUrl;
-            }
-        });
-
-        // ---- Sửa nhân viên ----
-        const editModal = document.getElementById('editEmployeeModal');
-        const editForm = document.getElementById('editEmployeeForm');
-
-        const editVaiTro = document.getElementById('editVaiTro');
-        const editVaiTroStaffOption = editVaiTro.querySelector('option[value="1"]');
-        const editVaiTroNote = document.getElementById('editVaiTroNote');
-        const editTrangThaiLockedOption = document.getElementById('editTrangThaiLockedOption');
-        const editTrangThaiNote = document.getElementById('editTrangThaiNote');
-
-        document.querySelectorAll('.edit-employee').forEach((button) => {
-            button.addEventListener('click', () => {
-                const isSelf = button.dataset.self === '1';
-                document.getElementById('editMaNV').value = button.dataset.manv || '';
-                document.getElementById('editHoTen').value = button.dataset.hotenn || '';
-                document.getElementById('editVaiTroValue').value = button.dataset.vaitro || '1';
-                document.getElementById('editTrangThai').value = button.dataset.trangthai || '1';
-                document.getElementById('editSdt').value = button.dataset.sdt || '';
-                document.getElementById('editDiaChi').value = button.dataset.diachi || '';
-                document.getElementById('editMatKhau').value = '';
-
-                // Không cho phép tự hạ cấp vai trò: khóa lựa chọn "Nhân viên kho" khi sửa chính mình.
-                if (isSelf) {
-                    editVaiTro.value = <?= json_encode((string) ($_SESSION['role'] ?? 1)) ?>;
-                    editVaiTroNote.classList.remove('hidden');
-
-                    // Không cho phép tự khóa tài khoản: ẩn lựa chọn "Đã khóa" khi sửa chính mình.
-                    editTrangThaiLockedOption.hidden = true;
-                    editTrangThaiNote.classList.remove('hidden');
-                } else {
-                    editVaiTro.value = button.dataset.vaitro || '1';
-                    editVaiTroNote.classList.remove('hidden');
-
-                    editTrangThaiLockedOption.hidden = false;
-                    editTrangThaiNote.classList.add('hidden');
-                }
-
-                clearMessage(editMessage);
-                openModal(editModal);
-                document.getElementById('editHoTen').focus();
-            });
-        });
-        document.getElementById('closeEditEmployeeModal').addEventListener('click', () => closeModal(editModal));
-        document.getElementById('cancelEditEmployee').addEventListener('click', () => closeModal(editModal));
-
-        editForm.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            if (await submitForm(editForm, editMessage)) {
-                window.location.href = reloadUrl;
-            }
-        });
-
-        // ---- Khóa nhân viên ----
-        const lockModal = document.getElementById('lockEmployeeModal');
-        const lockForm = document.getElementById('lockEmployeeForm');
-
-        document.querySelectorAll('.lock-employee').forEach((button) => {
-            button.addEventListener('click', () => {
-                const isLocked = button.dataset.trangthai === '0';
-                document.getElementById('lockEmployeeForm').action = isLocked
-                    ? '../ajax/unlock_employee.php'
-                    : '../ajax/lock_employee.php';
-                document.getElementById('lockEmployeeTitle').textContent = isLocked ? 'Mở khóa nhân viên' : 'Khóa nhân viên';
-                document.getElementById('lockEmployeeActionText').textContent = isLocked
-                    ? 'Bạn có chắc chắn muốn mở khóa tài khoản nhân viên '
-                    : 'Bạn có chắc chắn muốn khóa tài khoản nhân viên ';
-                document.getElementById('lockEmployeeSubmit').textContent = isLocked ? 'Mở khóa nhân viên' : 'Khóa nhân viên';
-                document.getElementById('lockEmployeeSubmit').className = isLocked
-                    ? 'rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700'
-                    : 'rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700';
-                document.getElementById('lockMaNV').value = button.dataset.manv || '';
-                document.getElementById('lockEmployeeName').textContent =
-                    (button.dataset.hotenn || '') + ' (' + (button.dataset.manv || '') + ')';
-                clearMessage(lockMessage);
-                openModal(lockModal);
-            });
-        });
-        document.getElementById('closeLockEmployeeModal').addEventListener('click', () => closeModal(lockModal));
-        document.getElementById('cancelLockEmployee').addEventListener('click', () => closeModal(lockModal));
-
-        lockForm.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            if (await submitForm(lockForm, lockMessage)) {
-                window.location.href = reloadUrl;
-            }
-        });
-    })();
-</script>
+<div id="employeesPageConfig" data-current-query="<?= htmlspecialchars($currentQuery, ENT_QUOTES, 'UTF-8') ?>" data-current-role="<?= htmlspecialchars((string) ($_SESSION['role'] ?? 1), ENT_QUOTES, 'UTF-8') ?>" hidden></div>
+<script src="../assets/js/employees.js"></script>
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

@@ -50,6 +50,12 @@ try {
         exit;
     }
 
+    if ((int) $_SESSION['role'] === 0 && (int) $employee['vaiTro'] === 2) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Quản lý kho không thể khóa tài khoản quản trị hệ thống.']);
+        exit;
+    }
+
     if ((int) $employee['trangThai'] === 0) {
         echo json_encode(['success' => true, 'message' => 'Tài khoản đã được khóa trước đó.']);
         exit;

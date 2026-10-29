@@ -44,6 +44,12 @@ try {
         exit;
     }
 
+    if ((int) $_SESSION['role'] === 0 && (int) $employee['vaiTro'] === 2) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Quản lý kho không thể mở khóa tài khoản quản trị hệ thống.']);
+        exit;
+    }
+
     if ((int) $employee['trangThai'] === 1) {
         echo json_encode(['success' => true, 'message' => 'Tài khoản đang hoạt động.']);
         exit;
