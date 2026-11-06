@@ -148,8 +148,8 @@ $endPage = min($totalPages, $page + 2);
     <div class="flex items-center gap-3">
         <div class="bg-sky-100 text-sky-600 p-2 rounded-lg text-xl"><i class="fa-solid fa-users-gear"></i></div>
         <div>
-            <h2 class="text-xl font-bold text-slate-800">Quản Lý Nhân Viên</h2>
-            <p class="text-xs text-slate-500">Thêm, chỉnh sửa và phân quyền tài khoản.</p>
+            <h2 class="text-xl font-bold text-slate-800">Quản Lý tài khoản</h2>
+            <p class="text-xs text-slate-500">Thêm, chỉnh sửa và quản lý tài khoản nhân viên.</p>
         </div>
     </div>
     <button id="openAddEmployeeModal" type="button" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition flex items-center gap-2">
