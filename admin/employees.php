@@ -11,6 +11,14 @@ if (!isset($_SESSION['current_user'], $_SESSION['role']) || (int) $_SESSION['rol
 require_once __DIR__ . '/../includes/header.php';
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../includes/csrf.php';
+require_once __DIR__ . '/../includes/employee_code_preview.php';
+
+$employeeCodePreviews = [];
+try {
+    $employeeCodePreviews = employee_code_previews($pdo, ['1', '0', '2']);
+} catch (PDOException $e) {
+    $employeeCodePreviews = [];
+}
 
 $search = trim((string) ($_GET['search'] ?? ''));
 $requestedRole = $_GET['role'] ?? 'all';
@@ -365,6 +373,10 @@ $endPage = min($totalPages, $page + 2);
                 <?php else: ?>
                     <input type="hidden" name="vaiTro" value="1">
                 <?php endif; ?>
+                <div class="col-span-2">
+                    <label for="addMaNV" class="mb-1.5 block text-sm font-medium text-slate-700">Mã nhân viên</label>
+                    <input id="addMaNV" type="text" readonly value="<?= htmlspecialchars($employeeCodePreviews['1'] ?? 'Không thể xem mã dự kiến', ENT_QUOTES, 'UTF-8') ?>" data-codes="<?= htmlspecialchars(json_encode($employeeCodePreviews), ENT_QUOTES, 'UTF-8') ?>" class="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-500 outline-none">
+                </div>
                 <p class="col-span-2 text-xs text-slate-500">Mật khẩu mặc định: <strong>123456</strong>.</p>
                 <div class="col-span-2">
                     <label for="addHoTen" class="mb-1.5 block text-sm font-medium text-slate-700">Họ tên <span class="text-rose-500">*</span></label>
@@ -472,5 +484,5 @@ $endPage = min($totalPages, $page + 2);
     </div>
 </div>
 <div id="employeesPageConfig" data-current-query="<?= htmlspecialchars($currentQuery, ENT_QUOTES, 'UTF-8') ?>" data-current-role="<?= htmlspecialchars((string) ($_SESSION['role'] ?? 1), ENT_QUOTES, 'UTF-8') ?>" hidden></div>
-<script src="../assets/js/employees.js"></script>
+<script src="../assets/js/employees.js?v=<?= filemtime(__DIR__ . '/../assets/js/employees.js') ?>"></script>
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

@@ -48,12 +48,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const addModal = document.getElementById('addEmployeeModal');
     const addForm = document.getElementById('addEmployeeForm');
+    const addRole = addForm?.elements.namedItem('vaiTro');
+    const addCode = document.getElementById('addMaNV');
+    const codePreviews = JSON.parse(addCode?.dataset.codes || '{}');
+    let codeRequest = 0;
+    const previewEmployeeCode = async () => {
+        const request = ++codeRequest;
+        const role = addRole.value;
+        addCode.value = codePreviews[role] || 'Không thể xem mã dự kiến';
+        try {
+            const url = `../ajax/preview_employee_code.php?vaiTro=${encodeURIComponent(role)}`;
+            const response = await fetch(url, { headers: { Accept: 'application/json' } });
+            const result = await response.json();
+            if (request === codeRequest && response.ok && result.success) {
+                codePreviews[role] = result.maNV;
+                addCode.value = result.maNV;
+            }
+        } catch (error) {
+            // Keep the code rendered with the page if the preview request fails.
+        }
+    };
     document.getElementById('openAddEmployeeModal')?.addEventListener('click', () => {
         addForm.reset();
         clearMessage(addMessage);
         openModal(addModal);
-        document.getElementById('addVaiTro').focus();
+        previewEmployeeCode();
+        (document.getElementById('addVaiTro') || document.getElementById('addHoTen')).focus();
     });
+    document.getElementById('addVaiTro')?.addEventListener('change', previewEmployeeCode);
     document.getElementById('closeAddEmployeeModal')?.addEventListener('click', () => closeModal(addModal));
     document.getElementById('cancelAddEmployee')?.addEventListener('click', () => closeModal(addModal));
     addForm?.addEventListener('submit', async (event) => {
