@@ -201,7 +201,6 @@ CREATE TABLE IF NOT EXISTS CHITIETPHIEUXUATNVL (
 
 -- ==========================================================
 -- 10. BẢNG PHIEUXUATTP
--- loaiPhieu = 1: Phiếu xuất thành phẩm
 -- trangThai: 0 = Chờ duyệt, 1 = Đã duyệt (đã trừ kho), 2 = Từ chối
 -- ==========================================================
 
@@ -211,7 +210,6 @@ CREATE TABLE IF NOT EXISTS PHIEUXUATTP (
     trangThai TINYINT NOT NULL DEFAULT 0,
     maNV VARCHAR(10) NOT NULL,
     maQL VARCHAR(10),
-    loaiPhieu BOOLEAN NOT NULL DEFAULT 1,
     ngayDuyet DATETIME NULL,
     lyDoTuChoi VARCHAR(255) NULL,
 
@@ -720,16 +718,16 @@ INSERT INTO PHIEUXUATNVL
 (maPX, ngayXuat, trangThai, maNV, maQL, ngayDuyet, ghiChu, loaiPhieu) VALUES
 
 ('PXN001', '2026-09-10 08:00:00', 1,
- 'NV001', 'QL001', '2026-09-10 10:00:00', 'Cấp vật tư cho lệnh sản xuất YC001', 0),
+ 'NV001', 'QL001', '2026-09-10 10:00:00', 'Xuất nguyên vật liệu theo kế hoạch', 0),
 
 ('PXN002', '2026-09-12 09:00:00', 1,
- 'NV002', 'QL002', '2026-09-12 11:00:00', 'Cấp vật tư cho lệnh sản xuất YC002', 0),
+ 'NV002', 'QL002', '2026-09-12 11:00:00', 'Xuất nguyên vật liệu theo kế hoạch', 0),
 
 ('PXN003', '2026-09-18 08:30:00', 0,
- 'NV001', NULL, NULL, 'Đề nghị cấp vật tư cho lệnh sản xuất YC003', 0),
+ 'NV001', NULL, NULL, 'Đề nghị xuất nguyên vật liệu', 0),
 
 ('PXN004', '2026-09-20 10:00:00', 1,
- 'NV002', 'QL001', '2026-09-20 12:00:00', 'Cấp vật tư cho lệnh sản xuất YC004', 0);
+ 'NV002', 'QL001', '2026-09-20 12:00:00', 'Xuất nguyên vật liệu theo kế hoạch', 0);
 
 
 -- ==========================================================
@@ -772,16 +770,16 @@ INSERT INTO CHITIETPHIEUXUATNVL
 -- ==========================================================
 
 INSERT INTO PHIEUXUATTP
-(maPX, ngayXuat, trangThai, maNV, maQL, loaiPhieu) VALUES
+(maPX, ngayXuat, trangThai, maNV, maQL) VALUES
 
 ('PXT001', '2026-09-11 14:00:00', 1,
- 'NV001', 'QL001', 1),
+ 'NV001', 'QL001'),
 
 ('PXT002', '2026-09-16 15:00:00', 1,
- 'NV002', 'QL002', 1),
+ 'NV002', 'QL002'),
 
 ('PXT003', '2026-09-21 09:00:00', 0,
- 'NV001', NULL, 1);
+ 'NV001', NULL);
 
 
 -- ==========================================================
@@ -909,17 +907,17 @@ INSERT INTO CHITIETPHIEUXUATNVL (maPX, maNVL, soLuong) VALUES
 
 -- 27.3 PHIẾU XUẤT THÀNH PHẨM LỊCH SỬ
 INSERT INTO PHIEUXUATTP
-(maPX, ngayXuat, trangThai, maNV, maQL, loaiPhieu, ngayDuyet, lyDoTuChoi) VALUES
-('PXT004', '2024-02-20 14:00:00', 1, 'NV001', 'QL001', 1, '2024-02-20 15:00:00', NULL),
-('PXT005', '2024-06-05 15:00:00', 1, 'NV002', 'QL002', 1, '2024-06-05 16:00:00', NULL),
-('PXT006', '2024-10-18 09:00:00', 1, 'NV005', 'QL003', 1, '2024-10-18 10:00:00', NULL),
-('PXT007', '2025-01-24 14:30:00', 1, 'NV006', 'QL004', 1, '2025-01-24 15:30:00', NULL),
-('PXT008', '2025-04-11 10:00:00', 1, 'NV007', 'QL003', 1, '2025-04-11 11:00:00', NULL),
-('PXT009', '2025-07-25 14:00:00', 2, 'NV001', 'QL004', 1, '2025-07-25 15:00:00', 'Số lượng xuất vượt số lượng thành phẩm khả dụng'),
-('PXT010', '2025-11-14 09:30:00', 1, 'NV005', 'QL005', 1, '2025-11-14 10:30:00', NULL),
-('PXT011', '2026-02-27 15:00:00', 1, 'NV006', 'QL003', 1, '2026-02-27 16:00:00', NULL),
-('PXT012', '2026-05-08 10:00:00', 1, 'NV007', 'QL001', 1, '2026-05-08 11:00:00', NULL),
-('PXT013', '2026-08-12 14:00:00', 0, 'NV008', NULL, 1, NULL, NULL);
+(maPX, ngayXuat, trangThai, maNV, maQL, ngayDuyet, lyDoTuChoi) VALUES
+('PXT004', '2024-02-20 14:00:00', 1, 'NV001', 'QL001', '2024-02-20 15:00:00', NULL),
+('PXT005', '2024-06-05 15:00:00', 1, 'NV002', 'QL002', '2024-06-05 16:00:00', NULL),
+('PXT006', '2024-10-18 09:00:00', 1, 'NV005', 'QL003', '2024-10-18 10:00:00', NULL),
+('PXT007', '2025-01-24 14:30:00', 1, 'NV006', 'QL004', '2025-01-24 15:30:00', NULL),
+('PXT008', '2025-04-11 10:00:00', 1, 'NV007', 'QL003', '2025-04-11 11:00:00', NULL),
+('PXT009', '2025-07-25 14:00:00', 2, 'NV001', 'QL004', '2025-07-25 15:00:00', 'Số lượng xuất vượt số lượng thành phẩm khả dụng'),
+('PXT010', '2025-11-14 09:30:00', 1, 'NV005', 'QL005', '2025-11-14 10:30:00', NULL),
+('PXT011', '2026-02-27 15:00:00', 1, 'NV006', 'QL003', '2026-02-27 16:00:00', NULL),
+('PXT012', '2026-05-08 10:00:00', 1, 'NV007', 'QL001', '2026-05-08 11:00:00', NULL),
+('PXT013', '2026-08-12 14:00:00', 0, 'NV008', NULL, NULL, NULL);
 
 INSERT INTO CHITIETPHIEUXUATTP (maPX, maTP, soLuong) VALUES
 ('PXT004', 'TP001', 8), ('PXT004', 'TP003', 12),

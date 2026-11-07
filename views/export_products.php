@@ -70,8 +70,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$isManager && ($_POST['action'] ??
             $exportCode = 'PXT' . str_pad((string) $nextCode, 3, '0', STR_PAD_LEFT);
 
             $insertExport = $pdo->prepare(
-                'INSERT INTO PHIEUXUATTP (maPX, ngayXuat, trangThai, maNV, maQL, loaiPhieu)
-                 VALUES (:maPX, NOW(), 0, :maNV, :maQL, 1)'
+                'INSERT INTO PHIEUXUATTP (maPX, ngayXuat, trangThai, maNV, maQL)
+                 VALUES (:maPX, NOW(), 0, :maNV, :maQL)'
             );
             $insertExport->execute([
                 'maPX' => $exportCode,

@@ -225,13 +225,14 @@ try {
             $materialRequestCode = 'PXN' . str_pad((string) $nextMaterialRequest, 3, '0', STR_PAD_LEFT);
 
             $insertRequest = $pdo->prepare(
-                'INSERT INTO PHIEUXUATNVL (maPX, ngayXuat, trangThai, maNV, maQL, loaiPhieu)
-                 VALUES (:maPX, NOW(), 0, :maNV, :maQL, 1)'
+                'INSERT INTO PHIEUXUATNVL (maPX, ngayXuat, trangThai, maNV, maQL, ghiChu, loaiPhieu)
+                 VALUES (:maPX, NOW(), 0, :maNV, :maQL, :ghiChu, 1)'
             );
             $insertRequest->execute([
                 'maPX' => $materialRequestCode,
                 'maNV' => $currentUser,
                 'maQL' => $manager,
+                'ghiChu' => 'Cấp vật tư cho lệnh sản xuất ' . $requestCode,
             ]);
 
             $insertRequestDetail = $pdo->prepare(
