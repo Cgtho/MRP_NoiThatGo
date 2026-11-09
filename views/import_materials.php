@@ -197,7 +197,7 @@ require_once '../includes/header.php';
 <?php if ($errorMessage !== null): ?><div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert"><?= $escape($errorMessage) ?></div><?php endif; ?>
 
 <div class="flex gap-6 items-start">
-    <div class="w-1/3 shrink-0 space-y-3">
+    <div class="w-1/3 shrink-0 max-h-[520px] space-y-3 overflow-y-auto pr-2 scrollbar-custom">
         <?php if ($receiptRows === []): ?><div class="bg-white border border-slate-200 rounded-xl p-5 text-sm text-slate-500">Chưa có phiếu nhập.</div><?php endif; ?>
         <?php foreach ($receiptRows as $row): ?><a href="?maPN=<?= urlencode((string) $row['maPN']) ?>" class="block bg-white <?= (string) $row['maPN'] === $selectedCode ? 'border-2 border-blue-400' : 'border border-slate-200 hover:border-blue-300' ?> rounded-xl p-4 shadow-sm transition"><div class="flex justify-between items-start mb-2"><span class="bg-slate-100 text-slate-700 text-xs font-bold px-2 py-0.5 rounded"><?= $escape($row['maPN']) ?></span></div><div class="text-sm text-slate-700 mb-1 font-medium"><?= (int) $row['soMatHang'] ?> mặt hàng, tổng <?= (int) $row['tongSoLuong'] ?></div><div class="text-[11px] text-slate-400"><?= $escape($row['ngayNhap']) ?></div></a><?php endforeach; ?>
     </div>

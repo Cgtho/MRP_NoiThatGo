@@ -201,7 +201,6 @@ CREATE TABLE IF NOT EXISTS CHITIETPHIEUXUATNVL (
 
 -- ==========================================================
 -- 10. BẢNG PHIEUXUATTP
--- loaiPhieu = 1: Phiếu xuất thành phẩm
 -- trangThai: 0 = Chờ duyệt, 1 = Đã duyệt (đã trừ kho), 2 = Từ chối
 -- ==========================================================
 
@@ -211,7 +210,6 @@ CREATE TABLE IF NOT EXISTS PHIEUXUATTP (
     trangThai TINYINT NOT NULL DEFAULT 0,
     maNV VARCHAR(10) NOT NULL,
     maQL VARCHAR(10),
-    loaiPhieu BOOLEAN NOT NULL DEFAULT 1,
     ngayDuyet DATETIME NULL,
     lyDoTuChoi VARCHAR(255) NULL,
 
@@ -441,7 +439,7 @@ INSERT INTO NHANVIEN (maNV, hoTen, vaiTro, trangThai, matKhau, sdt, diaChi) VALU
 
 
 -- ==========================================================
--- 16. 37 NGUYÊN VẬT LIỆU
+-- 16. 39 NGUYÊN VẬT LIỆU
 -- ==========================================================
 
 INSERT INTO NGUYENVATLIEU
@@ -458,7 +456,7 @@ INSERT INTO NGUYENVATLIEU
 
 ('NVL009', 'Sơn PU trắng',       2, 150, 0, 1),
 ('NVL010', 'Sơn PU nâu',         2, 180, 0, 1),
-('NVL011', 'Sơn PU đen',         2, 120, 0, 1),
+('NVL011', 'Sơn PU đen',         2, 120, 1, 1),
 ('NVL012', 'Sơn PU trong',       2, 100, 0, 1),
 
 ('NVL013', 'Keo dán gỗ',         2, 120, 0, 1),
@@ -470,16 +468,30 @@ INSERT INTO NGUYENVATLIEU
 ('NVL018', 'Ray trượt ngăn kéo', 3, 600, 0, 1),
 ('NVL019', 'Tay nắm tủ',         3, 700, 0, 1),
 ('NVL020', 'Chân bàn',           3, 400, 0, 1),
-
 ('NVL021', 'Chân ghế',           3, 500, 0, 1),
 ('NVL022', 'Đệm mút',            5, 300, 0, 1),
 ('NVL023', 'Vải bọc ghế',        4, 400, 0, 1),
 ('NVL024', 'Kính cường lực',     5, 200, 0, 1),
-('NVL025', 'Ốc lục giác',        3, 0, 0, 1);
+('NVL025', 'Ốc lục giác',        3, 0, 0, 1),
+('NVL026', 'Gỗ óc chó',          5, 180, 0, 1),
+('NVL027', 'Gỗ tần bì',          5, 220, 0, 1),
+('NVL028', 'Gỗ xoan đào',        5, 160, 0, 1),
+('NVL029', 'Ván HDF 12mm',       5, 240, 0, 1),
+('NVL030', 'Ván nhựa PVC',       5, 130, 0, 1),
+('NVL031', 'Sơn PU màu óc chó',  2, 90,  0, 1),
+('NVL032', 'Sơn lót gỗ',         2, 110, 0, 1),
+('NVL033', 'Keo ghép gỗ',        2, 75,  0, 1),
+('NVL034', 'Bản lề giảm chấn',   3, 500, 0, 1),
+('NVL035', 'Thanh treo tủ',      4, 240, 0, 1),
+('NVL036', 'Núm tay nắm gỗ',     3, 350, 0, 1),
+('NVL037', 'Đèn LED tủ',         3, 180, 0, 1),
+('NVL038', 'Bột trét gỗ',        1, 0, 1, 1),
+('NVL039', 'Màu nhuộm gỗ',       1, 0, 1, 0);
+
 
 
 -- ==========================================================
--- 17. 17 THÀNH PHẨM ĐỒ GỖ NỘI THẤT
+-- 17. 19 THÀNH PHẨM ĐỒ GỖ NỘI THẤT
 -- ==========================================================
 
 INSERT INTO THANHPHAM
@@ -493,9 +505,17 @@ INSERT INTO THANHPHAM
 ('TP006', 'Tủ hồ sơ gỗ',        'Cái', 20, 0, 1),
 ('TP007', 'Kệ sách gỗ',         'Cái', 25, 0, 1),
 ('TP008', 'Kệ tivi gỗ',         'Cái', 20, 0, 1),
-('TP009', 'Giường ngủ gỗ',      'Cái', 15, 0, 1),
-('TP010', 'Bàn trang điểm gỗ',  'Cái', 15, 0, 1),
-('TP011', 'Ván lót gỗ',         'Cái', 0, 0, 1);
+('TP009', 'Giường ngủ gỗ',        'Cái', 15, 0, 1),
+('TP010', 'Bàn trang điểm gỗ',    'Cái', 15, 0, 1),
+('TP011', 'Ván lót gỗ',           'Cái', 0, 0, 1),
+('TP012', 'Bàn trà gỗ óc chó',       'Cái', 18, 0, 1),
+('TP013', 'Tủ giày gỗ công nghiệp',  'Cái', 22, 0, 1),
+('TP014', 'Tủ bếp treo tường',       'Cái', 16, 0, 1),
+('TP015', 'Ghế thư giãn gỗ',         'Cái', 20, 0, 1),
+('TP016', 'Kệ góc trang trí',        'Cái', 25, 0, 1),
+('TP017', 'Bàn console gỗ',          'Cái', 12, 0, 1),
+('TP018', 'Mẫu kệ chưa sử dụng',  'Cái', 0, 1, 1),
+('TP019', 'Mẫu tủ ngừng sản xuất','Cái', 0, 1, 0);
 
 
 -- ==========================================================
@@ -587,46 +607,9 @@ INSERT INTO CHITIETTHANHPHAM
 INSERT INTO CHITIETTHANHPHAM
 (maTP, maNVL, soLuong) VALUES
 ('TP011', 'NVL001', 2),
-('TP011', 'NVL025', 6);
-
-
--- ==========================================================
--- 18.1 NGUYÊN VẬT LIỆU BỔ SUNG
--- ==========================================================
-
-INSERT INTO NGUYENVATLIEU
-(maNVL, tenNVL, maDVT, soLuong, isDeleted, trangThai) VALUES
-('NVL026', 'Gỗ óc chó',          5, 180, 0, 1),
-('NVL027', 'Gỗ tần bì',          5, 220, 0, 1),
-('NVL028', 'Gỗ xoan đào',        5, 160, 0, 1),
-('NVL029', 'Ván HDF 12mm',       5, 240, 0, 1),
-('NVL030', 'Ván nhựa PVC',       5, 130, 0, 1),
-('NVL031', 'Sơn PU màu óc chó',  2, 90,  0, 1),
-('NVL032', 'Sơn lót gỗ',         2, 110, 0, 1),
-('NVL033', 'Keo ghép gỗ',        2, 75,  0, 1),
-('NVL034', 'Bản lề giảm chấn',   3, 500, 0, 1),
-('NVL035', 'Thanh treo tủ',      4, 240, 0, 1),
-('NVL036', 'Núm tay nắm gỗ',     3, 350, 0, 1),
-('NVL037', 'Đèn LED tủ',         3, 180, 0, 1);
-
-
--- ==========================================================
--- 18.2 THÀNH PHẨM BỔ SUNG
--- ==========================================================
-
-INSERT INTO THANHPHAM
-(maTP, tenTP, donViTinh, soLuong, isDeleted, trangThai) VALUES
-('TP012', 'Bàn trà gỗ óc chó',       'Cái', 18, 0, 1),
-('TP013', 'Tủ giày gỗ công nghiệp',  'Cái', 22, 0, 1),
-('TP014', 'Tủ bếp treo tường',       'Cái', 16, 0, 1),
-('TP015', 'Ghế thư giãn gỗ',         'Cái', 20, 0, 1),
-('TP016', 'Kệ góc trang trí',        'Cái', 25, 0, 1),
-('TP017', 'Bàn console gỗ',          'Cái', 12, 0, 1);
-
-
--- ==========================================================
--- 18.3 ĐỊNH MỨC CHO THÀNH PHẨM BỔ SUNG
--- ==========================================================
+('TP011', 'NVL025', 6),
+('TP011', 'NVL016', 4),
+('TP011', 'NVL032', 1);
 
 -- Bàn trà gỗ óc chó
 INSERT INTO CHITIETTHANHPHAM (maTP, maNVL, soLuong) VALUES
@@ -735,16 +718,16 @@ INSERT INTO PHIEUXUATNVL
 (maPX, ngayXuat, trangThai, maNV, maQL, ngayDuyet, ghiChu, loaiPhieu) VALUES
 
 ('PXN001', '2026-09-10 08:00:00', 1,
- 'NV001', 'QL001', '2026-09-10 10:00:00', 'Cấp vật tư cho lệnh sản xuất YC001', 0),
+ 'NV001', 'QL001', '2026-09-10 10:00:00', 'Xuất nguyên vật liệu theo kế hoạch', 0),
 
 ('PXN002', '2026-09-12 09:00:00', 1,
- 'NV002', 'QL002', '2026-09-12 11:00:00', 'Cấp vật tư cho lệnh sản xuất YC002', 0),
+ 'NV002', 'QL002', '2026-09-12 11:00:00', 'Xuất nguyên vật liệu theo kế hoạch', 0),
 
 ('PXN003', '2026-09-18 08:30:00', 0,
- 'NV001', NULL, NULL, 'Đề nghị cấp vật tư cho lệnh sản xuất YC003', 0),
+ 'NV001', NULL, NULL, 'Đề nghị xuất nguyên vật liệu', 0),
 
 ('PXN004', '2026-09-20 10:00:00', 1,
- 'NV002', 'QL001', '2026-09-20 12:00:00', 'Cấp vật tư cho lệnh sản xuất YC004', 0);
+ 'NV002', 'QL001', '2026-09-20 12:00:00', 'Xuất nguyên vật liệu theo kế hoạch', 0);
 
 
 -- ==========================================================
@@ -761,16 +744,19 @@ INSERT INTO CHITIETPHIEUXUATNVL
 ('PXN001', 'NVL020', 20),
 
 -- PXN002
-('PXN002', 'NVL005', 30),
-('PXN002', 'NVL015', 100),
-('PXN002', 'NVL010', 10),
-('PXN002', 'NVL021', 20),
+('PXN002', 'NVL001', 100),
+('PXN002', 'NVL002', 36),
+('PXN002', 'NVL017', 92),
+('PXN002', 'NVL019', 40),
+('PXN002', 'NVL018', 24),
 
 -- PXN003 - Chưa duyệt
-('PXN003', 'NVL001', 20),
-('PXN003', 'NVL002', 15),
-('PXN003', 'NVL017', 10),
-('PXN003', 'NVL019', 10),
+('PXN003', 'NVL001', 85),
+('PXN003', 'NVL007', 30),
+('PXN003', 'NVL013', 15),
+('PXN003', 'NVL015', 340),
+('PXN003', 'NVL008', 10),
+('PXN003', 'NVL012', 10),
 
 -- PXN004
 ('PXN004', 'NVL004', 40),
@@ -784,16 +770,16 @@ INSERT INTO CHITIETPHIEUXUATNVL
 -- ==========================================================
 
 INSERT INTO PHIEUXUATTP
-(maPX, ngayXuat, trangThai, maNV, maQL, loaiPhieu) VALUES
+(maPX, ngayXuat, trangThai, maNV, maQL) VALUES
 
 ('PXT001', '2026-09-11 14:00:00', 1,
- 'NV001', 'QL001', 1),
+ 'NV001', 'QL001'),
 
 ('PXT002', '2026-09-16 15:00:00', 1,
- 'NV002', 'QL002', 1),
+ 'NV002', 'QL002'),
 
 ('PXT003', '2026-09-21 09:00:00', 0,
- 'NV001', NULL, 1);
+ 'NV001', NULL);
 
 
 -- ==========================================================
@@ -825,7 +811,7 @@ INSERT INTO YEUCAU
 
 ('YC001', '2026-09-05 08:00:00', 'QL001', 1),
 ('YC002', '2026-09-09 09:00:00', 'QL002', 1),
-('YC003', '2026-09-14 10:00:00', 'QL001', 2),
+('YC003', '2026-09-14 10:00:00', 'QL001', 0),
 ('YC004', '2026-09-19 08:30:00', 'QL002', 2);
 
 
@@ -921,17 +907,17 @@ INSERT INTO CHITIETPHIEUXUATNVL (maPX, maNVL, soLuong) VALUES
 
 -- 27.3 PHIẾU XUẤT THÀNH PHẨM LỊCH SỬ
 INSERT INTO PHIEUXUATTP
-(maPX, ngayXuat, trangThai, maNV, maQL, loaiPhieu, ngayDuyet, lyDoTuChoi) VALUES
-('PXT004', '2024-02-20 14:00:00', 1, 'NV001', 'QL001', 1, '2024-02-20 15:00:00', NULL),
-('PXT005', '2024-06-05 15:00:00', 1, 'NV002', 'QL002', 1, '2024-06-05 16:00:00', NULL),
-('PXT006', '2024-10-18 09:00:00', 1, 'NV005', 'QL003', 1, '2024-10-18 10:00:00', NULL),
-('PXT007', '2025-01-24 14:30:00', 1, 'NV006', 'QL004', 1, '2025-01-24 15:30:00', NULL),
-('PXT008', '2025-04-11 10:00:00', 1, 'NV007', 'QL003', 1, '2025-04-11 11:00:00', NULL),
-('PXT009', '2025-07-25 14:00:00', 2, 'NV008', 'QL004', 1, '2025-07-25 15:00:00', 'Số lượng xuất vượt số lượng thành phẩm khả dụng'),
-('PXT010', '2025-11-14 09:30:00', 1, 'NV005', 'QL005', 1, '2025-11-14 10:30:00', NULL),
-('PXT011', '2026-02-27 15:00:00', 1, 'NV006', 'QL003', 1, '2026-02-27 16:00:00', NULL),
-('PXT012', '2026-05-08 10:00:00', 1, 'NV007', 'QL001', 1, '2026-05-08 11:00:00', NULL),
-('PXT013', '2026-08-12 14:00:00', 0, 'NV008', NULL, 1, NULL, NULL);
+(maPX, ngayXuat, trangThai, maNV, maQL, ngayDuyet, lyDoTuChoi) VALUES
+('PXT004', '2024-02-20 14:00:00', 1, 'NV001', 'QL001', '2024-02-20 15:00:00', NULL),
+('PXT005', '2024-06-05 15:00:00', 1, 'NV002', 'QL002', '2024-06-05 16:00:00', NULL),
+('PXT006', '2024-10-18 09:00:00', 1, 'NV005', 'QL003', '2024-10-18 10:00:00', NULL),
+('PXT007', '2025-01-24 14:30:00', 1, 'NV006', 'QL004', '2025-01-24 15:30:00', NULL),
+('PXT008', '2025-04-11 10:00:00', 1, 'NV007', 'QL003', '2025-04-11 11:00:00', NULL),
+('PXT009', '2025-07-25 14:00:00', 2, 'NV001', 'QL004', '2025-07-25 15:00:00', 'Số lượng xuất vượt số lượng thành phẩm khả dụng'),
+('PXT010', '2025-11-14 09:30:00', 1, 'NV005', 'QL005', '2025-11-14 10:30:00', NULL),
+('PXT011', '2026-02-27 15:00:00', 1, 'NV006', 'QL003', '2026-02-27 16:00:00', NULL),
+('PXT012', '2026-05-08 10:00:00', 1, 'NV007', 'QL001', '2026-05-08 11:00:00', NULL),
+('PXT013', '2026-08-12 14:00:00', 0, 'NV008', NULL, NULL, NULL);
 
 INSERT INTO CHITIETPHIEUXUATTP (maPX, maTP, soLuong) VALUES
 ('PXT004', 'TP001', 8), ('PXT004', 'TP003', 12),
@@ -958,7 +944,8 @@ INSERT INTO YEUCAU (maYC, ngayYC, maNV, trangThai) VALUES
 ('YC013', '2026-01-05 08:00:00', 'QL003', 2),
 ('YC014', '2026-03-02 09:30:00', 'QL004', 2),
 ('YC015', '2026-06-01 08:00:00', 'QL005', 1),
-('YC016', '2026-08-03 09:00:00', 'QL003', 0);
+('YC016', '2026-08-03 09:00:00', 'QL003', 0),
+('YC017', '2026-10-20 08:00:00', 'QL001', 1);
 
 INSERT INTO CHITIETYEUCAU (maYC, maTP, soLuong) VALUES
 ('YC005', 'TP001', 18), ('YC005', 'TP003', 24),
@@ -972,4 +959,5 @@ INSERT INTO CHITIETYEUCAU (maYC, maTP, soLuong) VALUES
 ('YC013', 'TP002', 16), ('YC013', 'TP003', 28),
 ('YC014', 'TP004', 22), ('YC014', 'TP010', 10),
 ('YC015', 'TP001', 25), ('YC015', 'TP005', 9),
-('YC016', 'TP009', 7), ('YC016', 'TP011', 20);
+('YC016', 'TP009', 7), ('YC016', 'TP011', 20),
+('YC017', 'TP001', 5);
