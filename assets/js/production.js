@@ -1,4 +1,27 @@
 function initializeProductionOrderForm() {
+    const requestErrorModal = document.getElementById('productionRequestErrorModal');
+    const closeRequestError = document.getElementById('closeProductionRequestError');
+    const closeRequestErrorModal = () => {
+        if (!requestErrorModal) return;
+        requestErrorModal.classList.add('hidden');
+        requestErrorModal.classList.remove('flex');
+    };
+
+    closeRequestError?.addEventListener('click', closeRequestErrorModal);
+    if (requestErrorModal) {
+        window.setTimeout(closeRequestErrorModal, 5000);
+    }
+
+    document.querySelectorAll('.request-materials-form').forEach((form) => {
+        form.addEventListener('submit', () => {
+            const button = form.querySelector('.request-materials-button');
+            if (!button) return;
+            button.disabled = true;
+            button.classList.add('cursor-not-allowed', 'opacity-60');
+            button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang gửi...';
+        });
+    });
+
     const modalAddOrder = document.getElementById('modal-add-order');
     const btnOpenAddOrder = document.getElementById('btn-open-add-order');
     const orderItems = document.getElementById('order-items');

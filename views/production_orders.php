@@ -20,6 +20,9 @@ $nextOrderCode = 'YC001';
 $successMessage = isset($_GET['request_created'])
     ? 'Đã lập đề nghị xuất nguyên vật liệu và gửi quản lý phê duyệt.'
     : null;
+$flashRequestError = $_SESSION['production_request_error'] ?? null;
+unset($_SESSION['production_request_error']);
+$formError = is_string($flashRequestError) ? $flashRequestError : null;
 
 $escape = static fn ($value): string => htmlspecialchars((string) ($value ?? ''), ENT_QUOTES, 'UTF-8');
 $statusNames = [0 => 'Chờ xử lý', 1 => 'Đang làm', 2 => 'Đã hoàn thành'];
@@ -187,6 +190,23 @@ try {
             $orderStatement->execute(['maYC' => $requestCode]);
             if (!$orderStatement->fetch()) {
                 throw new RuntimeException('Lệnh không tồn tại hoặc không còn ở trạng thái thiếu vật tư.');
+            }
+
+            $existingExportStatement = $pdo->prepare(
+                'SELECT maPX
+                 FROM PHIEUXUATNVL
+                 WHERE ghiChu = :ghiChu AND trangThai IN (0, 1)
+                 LIMIT 1
+                 FOR UPDATE'
+            );
+            $existingExportStatement->execute([
+                'ghiChu' => 'Cấp vật tư cho lệnh sản xuất ' . $requestCode,
+            ]);
+            $existingExport = $existingExportStatement->fetchColumn();
+            if ($existingExport !== false) {
+                throw new RuntimeException(
+                    'Lệnh này đã có phiếu xuất NVL ' . $existingExport . ' đang chờ duyệt.'
+                );
             }
 
             $missingMaterialsStatement = $pdo->prepare(
@@ -368,7 +388,18 @@ try {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
-    $pageError = $exception instanceof RuntimeException ? $exception->getMessage() : 'Không thể tải dữ liệu lệnh sản xuất.';
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'request_materials') {
+        $_SESSION['production_request_error'] = $exception instanceof RuntimeException
+            ? $exception->getMessage()
+            : 'Không thể lập đề nghị xuất nguyên vật liệu.';
+        header(
+            'Location: production_orders.php?status=pending&maYC='
+            . urlencode((string) ($_POST['maYC'] ?? ''))
+        );
+        exit;
+    } else {
+        $pageError = $exception instanceof RuntimeException ? $exception->getMessage() : 'Không thể tải dữ liệu lệnh sản xuất.';
+    }
 }
 
 $counts = [
@@ -391,7 +422,16 @@ require_once '../includes/header.php';
 </div>
 
 <?php if ($pageError !== null): ?><div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert"><?= $escape($pageError) ?></div><?php endif; ?>
-<?php if ($formError !== null): ?><div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert"><?= $escape($formError) ?></div><?php endif; ?>
+<?php if ($formError !== null): ?>
+    <div id="productionRequestErrorModal" class="fixed right-5 top-20 z-[60] flex w-full max-w-sm items-start gap-3 rounded-lg border border-rose-200 bg-white p-4 text-sm text-rose-700 shadow-lg" role="alert" aria-labelledby="productionRequestErrorTitle">
+        <i class="fa-solid fa-circle-exclamation mt-0.5 text-rose-500"></i>
+        <div class="flex-1">
+            <h3 id="productionRequestErrorTitle" class="font-bold">Không thể lập đề nghị</h3>
+            <p class="mt-1 leading-5"><?= $escape($formError) ?></p>
+        </div>
+        <button type="button" id="closeProductionRequestError" class="text-lg leading-none text-slate-400 hover:text-slate-700" aria-label="Đóng thông báo">&times;</button>
+    </div>
+<?php endif; ?>
 <?php if ($successMessage !== null): ?>
     <div id="productionSuccessToast" class="fixed right-5 top-20 z-[60] flex w-full max-w-sm items-start gap-3 rounded-lg border border-emerald-200 bg-white p-4 text-sm text-emerald-700 shadow-lg" role="status">
         <i class="fa-solid fa-circle-check mt-0.5 text-emerald-500"></i>
@@ -439,10 +479,10 @@ require_once '../includes/header.php';
                 <div><h4 class="font-bold text-slate-800 text-xs mb-1">Hành động tiếp theo</h4><p class="text-[10px] text-slate-500"><?= $currentStatus === 0 ? 'Kho đang thiếu vật tư, nhân viên cần chờ được cấp bổ sung.' : ($currentStatus === 1 ? 'Đã đủ vật tư, nhân viên có thể thực hiện sản xuất và xác nhận hoàn thành.' : 'Lệnh đã hoàn thành và đã cập nhật kho thành phẩm.') ?></p></div>
                 <div class="flex gap-2">
                     <?php if ($currentStatus === 0 && !$isManager): ?>
-                        <form method="post">
+                        <form method="post" class="request-materials-form">
                             <input type="hidden" name="action" value="request_materials">
                             <input type="hidden" name="maYC" value="<?= $escape($selectedOrder['maYC']) ?>">
-                            <button type="submit" class="bg-orange-600 hover:bg-orange-700 text-white text-xs font-medium px-4 py-2 rounded-lg"><i class="fa-regular fa-paper-plane"></i> Lập đề nghị xuất NVL</button>
+                            <button type="submit" class="request-materials-button bg-orange-600 hover:bg-orange-700 text-white text-xs font-medium px-4 py-2 rounded-lg"><i class="fa-regular fa-paper-plane"></i> Lập đề nghị xuất NVL</button>
                         </form>
                     <?php endif; ?>
                     <?php if ($currentStatus === 1 && !$isManager): ?>
@@ -500,8 +540,8 @@ require_once '../includes/header.php';
         </form>
     </div>
 </div>
-<script src="../assets/js/production.js"></script>
 <?php endif; ?>
+<script src="../assets/js/production.js?v=3"></script>
 <?php if ($successMessage !== null): ?>
 <script src="../assets/js/production_toast.js"></script>
 <?php endif; ?>

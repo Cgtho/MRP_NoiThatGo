@@ -66,4 +66,55 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
+
+    const rejectModal = document.getElementById('modal-reject-export');
+    const rejectForm = document.getElementById('reject-export-form');
+    const rejectCode = document.getElementById('reject-export-code');
+    const rejectReason = document.getElementById('reject-export-reason');
+    const rejectError = document.getElementById('reject-export-error');
+    const closeRejectModal = () => {
+        if (!rejectModal) return;
+        rejectModal.classList.add('hidden');
+        rejectModal.classList.remove('flex');
+    };
+
+    document.addEventListener('click', (event) => {
+        const button = event.target.closest('.reject-export-button');
+        if (!button || !rejectModal || !rejectCode || !rejectReason || !rejectError) return;
+
+        rejectCode.value = button.getAttribute('data-ma-px') || '';
+        rejectReason.value = '';
+        rejectError.classList.add('hidden');
+        rejectModal.classList.remove('hidden');
+        rejectModal.classList.add('flex');
+        rejectReason.focus();
+    });
+    document.querySelectorAll('.close-reject-export').forEach((button) => {
+        button.addEventListener('click', closeRejectModal);
+    });
+    if (rejectForm) {
+        rejectForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const button = rejectForm.querySelector('button[type="submit"]');
+            if (!button || !rejectError) return;
+            button.disabled = true;
+            rejectError.classList.add('hidden');
+            try {
+                const response = await fetch(rejectForm.action, {
+                    method: 'POST',
+                    body: new FormData(rejectForm),
+                    headers: { Accept: 'application/json' },
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || 'Không thể từ chối phiếu xuất NVL.');
+                }
+                window.location.reload();
+            } catch (error) {
+                rejectError.textContent = error.message || 'Không thể kết nối máy chủ.';
+                rejectError.classList.remove('hidden');
+                button.disabled = false;
+            }
+        });
+    }
 });

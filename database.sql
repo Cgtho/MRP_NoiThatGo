@@ -332,6 +332,10 @@ DROP TRIGGER IF EXISTS trg_ctpn_mark_material_used//
 DROP TRIGGER IF EXISTS trg_ctpxnvl_mark_material_used//
 DROP TRIGGER IF EXISTS trg_ctpxtp_mark_product_used//
 DROP TRIGGER IF EXISTS trg_ctyc_mark_product_used//
+DROP TRIGGER IF EXISTS trg_nvl_mark_used_before_insert//
+DROP TRIGGER IF EXISTS trg_nvl_mark_used_before_update//
+DROP TRIGGER IF EXISTS trg_nvlx_mark_used_after_insert//
+DROP TRIGGER IF EXISTS trg_nvlx_mark_used_after_update//
 
 CREATE TRIGGER trg_cttp_mark_material_used
 AFTER INSERT ON CHITIETTHANHPHAM
@@ -385,6 +389,47 @@ BEGIN
     UPDATE THANHPHAM
     SET isDeleted = 0
     WHERE maTP = NEW.maTP;
+END//
+
+-- Khi tồn kho tại kho hoặc xưởng lớn hơn 0, không cho phép xóa cứng nguyên vật liệu.
+CREATE TRIGGER trg_nvl_mark_used_before_insert
+BEFORE INSERT ON NGUYENVATLIEU
+FOR EACH ROW
+BEGIN
+    IF NEW.soLuong > 0 THEN
+        SET NEW.isDeleted = 0;
+    END IF;
+END//
+
+CREATE TRIGGER trg_nvl_mark_used_before_update
+BEFORE UPDATE ON NGUYENVATLIEU
+FOR EACH ROW
+BEGIN
+    IF NEW.soLuong > 0 THEN
+        SET NEW.isDeleted = 0;
+    END IF;
+END//
+
+CREATE TRIGGER trg_nvlx_mark_used_after_insert
+AFTER INSERT ON NGUYENVATLIEUXUONG
+FOR EACH ROW
+BEGIN
+    IF NEW.soLuong > 0 THEN
+        UPDATE NGUYENVATLIEU
+        SET isDeleted = 0
+        WHERE maNVL = NEW.maNVL;
+    END IF;
+END//
+
+CREATE TRIGGER trg_nvlx_mark_used_after_update
+AFTER UPDATE ON NGUYENVATLIEUXUONG
+FOR EACH ROW
+BEGIN
+    IF NEW.soLuong > 0 THEN
+        UPDATE NGUYENVATLIEU
+        SET isDeleted = 0
+        WHERE maNVL = NEW.maNVL;
+    END IF;
 END//
 
 DELIMITER ;
@@ -456,7 +501,7 @@ INSERT INTO NGUYENVATLIEU
 
 ('NVL009', 'Sơn PU trắng',       2, 150, 0, 1),
 ('NVL010', 'Sơn PU nâu',         2, 180, 0, 1),
-('NVL011', 'Sơn PU đen',         2, 120, 1, 1),
+('NVL011', 'Sơn PU đen',         2, 120, 0, 1),
 ('NVL012', 'Sơn PU trong',       2, 100, 0, 1),
 
 ('NVL013', 'Keo dán gỗ',         2, 120, 0, 1),

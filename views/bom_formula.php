@@ -123,7 +123,7 @@ try {
                             <th class="px-4 py-3">Tên Nguyên Vật Liệu</th>
                             <th class="px-4 py-3">Đơn vị tính</th>
                             <th class="px-4 py-3">Định mức</th>
-                            <th class="px-4 py-3">Tồn kho thực tế</th>
+                            <th class="px-4 py-3">Số lượng có sẵn</th>
                             <th class="px-4 py-3">Khả năng đáp ứng</th>
                         </tr>
                     </thead>
